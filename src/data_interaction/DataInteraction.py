@@ -2,14 +2,35 @@ class DataInteraction:
     def __init__(self):
         pass
 
+    def login(self, username: str, password: str) -> bool:
+        """
+        Attempt to login using a given username and password
+        -- This should record login date and time when it was accessed
+
+        :param username: Username of account to access
+        :param password: Password to try
+        :return: If login was successful
+        """
+        pass
+
     def create_account(self, username: str, password: str) -> bool:
         """
         Create a new account
         -- Username must be unique
+        -- Store date and time that account was created
 
         :param username: Username to create
         :param password: Password to set
         :return: If successful
+        """
+        pass
+
+    def search_for_user(self, email: str) -> list[str]:
+        """
+        Find all user accounts by an email address
+
+        :param email: Email address to search for
+        :return: List of all user accounts
         """
         pass
 
@@ -81,3 +102,77 @@ class DataInteraction:
         :return: If all were removed
         """
         pass
+
+    def delete_collection(self, collection_name: str) -> bool:
+        """
+        Delete a given collection by name
+        -- Collection must exist
+
+        :param collection_name: Name of collection
+        :return: If successful
+        """
+        pass
+
+    def rename_collection(self, current_name: str, new_name: str) -> bool:
+        """
+        Rename a collection
+        -- Collection must exist, new name must be unique and not equivalent to previous name
+
+        :param current_name: Current name of collection.
+        :param new_name: New name of collection
+        :return: If successful
+        """
+
+    def show_collections(self) -> list[tuple[str, int, int]]:
+        """
+        Get a list of all collections
+        -- Should be listed by name in ascending order
+
+        :return: List of all collections as tuple(name, number of books, total page count)
+        """
+        pass
+
+    def search_for_book(self, **kwargs) -> list[tuple[str, list[str], str, int, str, int]]:
+        """
+        Search for a book by an attribute
+
+        :param kwargs: name, release_date, author, publisher, genre
+        :return: List of matching books in ascending alphabetical order tuple(name, authors, publisher, length,
+                                                                                audience, rating)
+        """
+        pass
+
+    def rate_book(self, book_isbn: str, rating: int) -> bool:
+        """
+        Rate a book
+        -- Book must exist
+        -- If book is already rated by this user then the rating is overwritten
+
+        :param book_isbn: ISBN of the book to rate
+        :param rating: Rating of that book [1, 5]
+        :return: If successful
+        """
+        pass
+
+    def read_book_by_isbn(self, book_isbn: str, start_page: int, end_page: int) -> bool:
+        """
+        Read a book by it's ISBN
+        -- ISBN must exist
+
+        :param book_isbn: ISBN of the book to read
+        :param start_page: Start page for the reading session
+        :param end_page: End page for the reading session
+        :return: If book read successfully
+        """
+        pass
+
+    def read_random_book_by_collection(self, collection_name: str, start_page: int, end_page: int) -> bool:
+        """
+        Read a random book from a collection
+        -- Collection name must exist
+
+        :param collection_name: Name of collection to select form
+        :param start_page: Start page for reading session
+        :param end_page: End page for reading session
+        :return: If book could be read successfully
+        """
