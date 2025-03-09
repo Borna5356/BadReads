@@ -1,5 +1,3 @@
-from mock_data import *
-
 class DataInteraction:
     def __init__(self):
         self.current_user = None
@@ -13,6 +11,9 @@ class DataInteraction:
         :param password: Password to try
         :return: If login was successful
         """
+
+        # If successfully logged the log in then current user should be set
+        self.current_user = username
         pass
 
     def logout(self) -> bool:
@@ -39,9 +40,22 @@ class DataInteraction:
         :param password: Password to set
         :return: If successful
         """
+
+
+        # If successfully created the account then set username
+        self.current_user = username
         pass
 
-    def search_for_user(self, email: str) -> list[str]:
+    def get_book_by_isbn(self, isbn: str) -> tuple[str, list[str], str, int, str, int] | None:
+        """
+        Get the book from an ISBN
+
+        :param isbn: ISBN of the book to search for
+        :return: Book details (tuple(name, authors, publisher, length, audience, rating)) or None if not found
+        """
+        pass
+
+    def search_for_users(self, email: str) -> list[str]:
         """
         Find all user accounts by an email address
 
@@ -146,6 +160,15 @@ class DataInteraction:
         -- Should be listed by name in ascending order
 
         :return: List of all collections as tuple(name, number of books, total page count)
+        """
+        pass
+
+    def get_collection_contents(self, collection_name: str) -> list[tuple[str, list[str], str, int, str, int]]:
+        """
+        Get a list of all books in a collection
+
+        :param collection_name: Name of the collection to search
+        :return: List of books as tuple(name, authors, publisher, length, audience, rating)
         """
         pass
 
