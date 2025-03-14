@@ -1,3 +1,12 @@
+from enum import Enum
+
+class SortOptions(Enum):
+    BOOK_NAME = 1
+    PUBLISHER = 2
+    GENRE = 3
+    RELEASED_YEAR = 4
+
+
 class DataInteraction:
     def __init__(self):
         self.current_user = None
@@ -172,12 +181,14 @@ class DataInteraction:
         """
         pass
 
-    def search_for_book(self, search_method: str, val: str) -> list[tuple[str, list[str], str, int, str, int]]:
+    def search_for_book(self, search_method: str, val: str, sort_by: SortOptions, ascending: bool = True) -> list[tuple[str, list[str], str, int, str, int]]:
         """
         Search for a book by an attribute
 
         :param search_method: Either name, release_date, author, publisher, or genre
         :param val: Value to fill in the search method
+        :param sort_by: Option to sort the resulting list by specified in the enum
+        :param ascending: If we sort in ascending order or False for descending order
         :return: List of matching books in ascending alphabetical order tuple(name, authors, publisher, length,
                                                                                 audience, rating)
         """

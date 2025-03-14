@@ -2,6 +2,7 @@ from getpass import getpass
 from tabulate import tabulate
 
 from src.data_interaction.DataInteraction import DataInteraction
+from src.data_interaction.DataInteraction import SortOptions
 
 
 class Interface:
@@ -210,7 +211,9 @@ class Interface:
 
         search_val = str(input("Search value: "))
 
-        results = self.database.search_for_book(search_method, search_val)
+        # TODO Add the options to change what we're sorting by
+
+        results = self.database.search_for_book(search_method, search_val, SortOptions.BOOK_NAME, True)
 
         self.__display_books(results)
 
