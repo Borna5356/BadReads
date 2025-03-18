@@ -1,4 +1,8 @@
 from enum import Enum
+import json
+
+import psycopg2
+from sshtunnel import SSHTunnelForwarder
 
 class SortOptions(Enum):
     BOOK_NAME = 1
@@ -6,10 +10,50 @@ class SortOptions(Enum):
     GENRE = 3
     RELEASED_YEAR = 4
 
+CONFIG_FILENAME = "config.json"
 
 class DataInteraction:
+    __slots__ = ["__sshTunnel", "__connection", "__cursor", "__current_user"]
+
     def __init__(self):
-        self.current_user = None
+        # Get login credentials
+        with open(CONFIG_FILENAME, 'r') as file:
+            credentials = json.load(file)
+
+        # Data for connection
+        ssh_host = "starbug.cs.rit.edu"
+        ssh_port = 22
+        sql_host = "127.0.0.1"
+        sql_port = 5432
+        db = "p32001_13"
+        username = credentials["username"]
+        password = credentials["password"]
+        
+        # Establish connection via ssh tunneling
+        self.__sshTunnel = SSHTunnelForwarder(
+            (ssh_host, ssh_port),
+            ssh_username = username,
+            ssh_password = password,
+            remote_bind_address = (sql_host, sql_port),
+            local_bind_address = (sql_host, sql_port)
+        )
+
+        self.__sshTunnel.start()
+
+        self.__connection = psycopg2.connect(
+            host = self.__sshTunnel.local_bind_host,
+            port = self.__sshTunnel.local_bind_port,
+            database = db,
+            user = username,
+            password = password
+        )
+
+        self.__connection.autocommit = True
+
+        # Create a cursor object
+        self.__cursor = self.__connection.cursor()
+
+        self.__current_user = ""
 
     def login(self, username: str, password: str) -> bool:
         """
@@ -22,7 +66,7 @@ class DataInteraction:
         """
 
         # If successfully logged the log in then current user should be set
-        self.current_user = username
+        self.__current_user = username
         pass
 
     def logout(self) -> bool:
@@ -31,10 +75,10 @@ class DataInteraction:
 
         :return: If logout successful
         """
-        if self.current_user is None:
+        if self.__current_user is None:
             return False
 
-        self.current_user = None
+        self.__current_user = None
         return True
 
     def create_account(self, username: str, name: str, email: str, password: str) -> bool:
@@ -52,7 +96,7 @@ class DataInteraction:
 
 
         # If successfully created the account then set username
-        self.current_user = username
+        self.__current_user = username
         pass
 
     def get_book_by_isbn(self, isbn: str) -> tuple[str, list[str], str, int, str, int] | None:
@@ -64,14 +108,21 @@ class DataInteraction:
         """
         pass
 
-    def search_for_users(self, email: str) -> list[str]:
+    def search_for_users(self, email: str) -> list[tuple]:
         """
         Find all user accounts by an email address
 
         :param email: Email address to search for
         :return: List of all user accounts
         """
-        pass
+        query = f"""
+                    select * from users where email = '{email}';
+                """
+
+        self.__cursor.execute(query)
+        rows = self.__cursor.fetchall()
+        
+        return rows
 
     def follow_user(self, followee: str) -> bool:
         """
@@ -229,3 +280,8 @@ class DataInteraction:
         :return: If book could be read successfully
         """
         pass
+
+    def shutdown(self):
+        self.__cursor.close()
+        self.__connection.close()
+        self.__sshTunnel.close()

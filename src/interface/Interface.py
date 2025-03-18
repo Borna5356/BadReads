@@ -478,3 +478,6 @@ class Interface:
             print(f)
 
         return True
+    
+    def shutdown(self):
+        self.database.shutdown()

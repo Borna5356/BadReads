@@ -17,6 +17,7 @@ def main():
                 print("Unrecognized command.")
 
         except KeyboardInterrupt:
+            interface.shutdown()
             break
 
     print("Exiting...")
