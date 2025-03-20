@@ -47,12 +47,9 @@ class DataInteraction:
             user = username,
             password = password
         )
-
         self.__connection.autocommit = True
-
-        # Create a cursor object
+        
         self.__cursor = self.__connection.cursor()
-
         self.__current_user = ""
 
     def login(self, username: str, password: str) -> bool:
@@ -65,9 +62,19 @@ class DataInteraction:
         :return: If login was successful
         """
 
+        query = f"""
+                    SELECT * FROM users WHERE username = '{username}' AND password = '{password}';
+                """
+
+        self.__cursor.execute(query)
+        rows = self.__cursor.fetchall()
+
+        if (len(rows) == 0):
+            return False
+
         # If successfully logged the log in then current user should be set
         self.__current_user = username
-        pass
+        return True
 
     def logout(self) -> bool:
         """
@@ -75,10 +82,10 @@ class DataInteraction:
 
         :return: If logout successful
         """
-        if self.__current_user is None:
+        if self.__current_user == "":
             return False
 
-        self.__current_user = None
+        self.__current_user = ""
         return True
 
     def create_account(self, username: str, name: str, email: str, password: str) -> bool:
@@ -94,10 +101,19 @@ class DataInteraction:
         :return: If successful
         """
 
+        query = f"""
+                    INSERT INTO users (username, name, email, password) VALUES('{username}', '{name}', '{email}', '{password}');
+                """
+
+        self.__cursor.execute(query)
+        rows = self.__cursor.fetchall()
+
+        if (len(rows) == 0):
+            return False
 
         # If successfully created the account then set username
         self.__current_user = username
-        pass
+        return True
 
     def get_book_by_isbn(self, isbn: str) -> tuple[str, list[str], str, int, str, int] | None:
         """
@@ -106,7 +122,17 @@ class DataInteraction:
         :param isbn: ISBN of the book to search for
         :return: Book details (tuple(name, authors, publisher, length, audience, rating)) or None if not found
         """
-        pass
+        query = f"""
+                    SELECT * FROM book WHERE isbn = '{isbn}';
+                """
+
+        self.__cursor.execute(query)
+        rows = self.__cursor.fetchall()
+
+        if len(rows) == 0:
+            return False
+
+        return rows[0]
 
     def search_for_users(self, email: str) -> list[tuple]:
         """
@@ -116,7 +142,7 @@ class DataInteraction:
         :return: List of all user accounts
         """
         query = f"""
-                    select * from users where email = '{email}';
+                    SELECT * FROM users WHERE email = '{email}';
                 """
 
         self.__cursor.execute(query)
