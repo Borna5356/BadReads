@@ -13,7 +13,7 @@ class SortOptions(Enum):
 CONFIG_FILENAME = "config.json"
 
 class DataInteraction:
-    __slots__ = ["__sshTunnel", "__connection", "__cursor", "__current_user"]
+    __slots__ = ["__sshTunnel", "__connection", "__cursor", "current_user"]
 
     def __init__(self):
         # Get login credentials
@@ -50,7 +50,7 @@ class DataInteraction:
         self.__connection.autocommit = True
         
         self.__cursor = self.__connection.cursor()
-        self.__current_user = ""
+        self.current_user = ""
 
     def login(self, username: str, password: str) -> bool:
         """
@@ -72,7 +72,7 @@ class DataInteraction:
             return False
 
         # If successfully logged the log in then current user should be set
-        self.__current_user = username
+        self.current_user = username
         return True
 
     def logout(self) -> bool:
@@ -81,10 +81,10 @@ class DataInteraction:
 
         :return: If logout successful
         """
-        if self.__current_user == "":
+        if self.current_user == "":
             return False
 
-        self.__current_user = ""
+        self.current_user = ""
         return True
 
     def create_account(self, username: str, name: str, email: str, password: str) -> bool:
@@ -110,7 +110,7 @@ class DataInteraction:
             return False
 
         # If successfully created the account then set username
-        self.__current_user = username
+        self.current_user = username
         return True
 
     def get_book_by_isbn(self, isbn: str) -> tuple[str, list[str], str, int, str, int] | None:
@@ -146,7 +146,7 @@ class DataInteraction:
                 JOIN 
                     rates ON book.isbn = rates.isbn
                 WHERE 
-                    rates.username = '{self.__current_user}' AND
+                    rates.username = '{self.current_user}' AND
                     book.isbn = {isbn}
                 GROUP BY
                     rates.rates, book.title, book.length, book.audience;
@@ -182,7 +182,7 @@ class DataInteraction:
         """
         query = f"""
                     INSERT INTO follows (followerusername, followeeusername)
-                    VALUES ('{self.__current_user}', '{followee}');
+                    VALUES ('{self.current_user}', '{followee}');
                 """
 
         self.__cursor.execute(query)
@@ -198,7 +198,7 @@ class DataInteraction:
         :return: If successful
         """
         query = f"""
-            DELETE from follows WHERE followerusername = '{self.__current_user}'
+            DELETE from follows WHERE followerusername = '{self.current_user}'
             AND followeeusername = '{followee}';
         """
 
@@ -213,7 +213,7 @@ class DataInteraction:
         :return: List of usernames that follow current user
         """
         query = f"""
-                    SELECT followerusername FROM follows WHERE followeeusername = '{self.__current_user}';
+                    SELECT followerusername FROM follows WHERE followeeusername = '{self.current_user}';
                 """
 
         self.__cursor.execute(query)
@@ -228,7 +228,7 @@ class DataInteraction:
         :return: Usernames of following
         """
         query = f"""
-                    SELECT followeeusername FROM follows WHERE followerusername = '{self.__current_user}';
+                    SELECT followeeusername FROM follows WHERE followerusername = '{self.current_user}';
                 """
 
         self.__cursor.execute(query)
