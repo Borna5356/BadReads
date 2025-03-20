@@ -1,5 +1,4 @@
 from interface.Interface import Interface
-from data_interaction.DataInteraction import DataInteraction
 
 
 def main():
@@ -13,6 +12,8 @@ def main():
 
             if command in interface.command_mapping.keys():
                 interface.command_mapping[command]()
+            elif command == "exit":
+                break
             else:
                 print("Unrecognized command.")
 
