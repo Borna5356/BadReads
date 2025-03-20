@@ -43,7 +43,7 @@ class Interface:
 
         :return: If query can be allowed to continue
         """
-        if self.database.current_user is None:
+        if self.database.get_current_user() is None:
             print("Must be logged in to a user account.")
             return False
 
@@ -146,7 +146,7 @@ class Interface:
         # Now attempt to create the account
         if self.database.create_account(username, name, email, password):
             print("Account created successfully! Logged in.")
-            self.database.current_user = username
+            self.database.get_current_user() = username
             return True
         else:
             return False
