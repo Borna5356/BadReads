@@ -211,9 +211,23 @@ class Interface:
 
         search_val = str(input("Search value: "))
 
-        # TODO Add the options to change what we're sorting by
+        order_options = ["name", "publisher", "genre", "release year"]
+        order_by = self.__matching_prompt("Order by", order_options)
 
-        results = self.database.search_for_book(search_method, search_val, SortOptions.BOOK_NAME, True)
+        ascending = str(input("(a)scending/(d)escending? ")) == "a"
+
+        order_by_enum = None
+        if order_by == "publisher":
+            order_by_enum = SortOptions.PUBLISHER
+        elif order_by == "genre":
+            order_by_enum = SortOptions.GENRE
+        elif order_by == "release year":
+            order_by_enum = SortOptions.RELEASED_YEAR
+        else:
+            order_by_enum = SortOptions.BOOK_NAME
+
+
+        results = self.database.search_for_book(search_method, search_val, order_by_enum, ascending)
 
         self.__display_books(results)
 
@@ -379,9 +393,8 @@ class Interface:
         start_page = int(input("Enter start page: "))
         end_page = int(input("Enter end page: "))
 
-        # TODO Add book name that was read
-        if self.database.read_random_book_by_collection(collection_name, start_page, end_page):
-            print("Successfully read book.")
+        if (book_name := self.database.read_random_book_by_collection(collection_name, start_page, end_page)) != "":
+            print(f"Successfully read book: {book_name}.")
             return True
         else:
             print("Failed to read book.")

@@ -295,7 +295,7 @@ class DataInteraction:
         """
         pass
 
-    def read_random_book_by_collection(self, collection_name: str, start_page: int, end_page: int) -> bool:
+    def read_random_book_by_collection(self, collection_name: str, start_page: int, end_page: int) -> str:
         """
         Read a random book from a collection
         -- Collection name must exist
@@ -303,7 +303,7 @@ class DataInteraction:
         :param collection_name: Name of collection to select form
         :param start_page: Start page for reading session
         :param end_page: End page for reading session
-        :return: If book could be read successfully
+        :return: Name of the book that was read, empty string if failed
         """
         pass
 
