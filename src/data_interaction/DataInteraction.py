@@ -10,7 +10,7 @@ class SortOptions(Enum):
     GENRE = 3
     RELEASED_YEAR = 4
 
-CONFIG_FILENAME = "config.json"
+CONFIG_FILENAME = "../config.json"
 
 class DataInteraction:
     __slots__ = ["__sshTunnel", "__connection", "__cursor", "current_user"]

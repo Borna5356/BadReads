@@ -1,8 +1,8 @@
 from getpass import getpass
 from tabulate import tabulate
 
-from src.data_interaction.DataInteraction import DataInteraction
-from src.data_interaction.DataInteraction import SortOptions
+from data_interaction.DataInteraction import DataInteraction
+from data_interaction.DataInteraction import SortOptions
 
 
 class Interface:
@@ -89,7 +89,8 @@ class Interface:
         """
         print("Available commands:")
 
-        help_messages = [(i[0], i[1]) for i in self.command_list]
+        help_messages = [("exit", "Exit the application")]
+        help_messages.extend([(i[0], i[1]) for i in self.command_list])
 
         table = tabulate(help_messages, headers=["Command", "Description"], tablefmt="simple")
         print(table)
