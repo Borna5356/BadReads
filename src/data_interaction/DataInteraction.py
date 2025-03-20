@@ -67,9 +67,8 @@ class DataInteraction:
                 """
 
         self.__cursor.execute(query)
-        rows = self.__cursor.fetchall()
 
-        if (len(rows) == 0):
+        if (self.__cursor.rowcount == 0):
             return False
 
         # If successfully logged the log in then current user should be set
@@ -106,9 +105,8 @@ class DataInteraction:
                 """
 
         self.__cursor.execute(query)
-        rows = self.__cursor.fetchall()
 
-        if (len(rows) == 0):
+        if (self.__cursor.rowcount):
             return False
 
         # If successfully created the account then set username
@@ -120,19 +118,43 @@ class DataInteraction:
         Get the book from an ISBN
 
         :param isbn: ISBN of the book to search for
-        :return: Book details (tuple(name, authors, publisher, length, audience, rating)) or None if not found
+        :return: Book details (tuple(title, authors, publishers, length, audience, rating)) or None if not found
         """
         query = f"""
-                    SELECT * FROM book WHERE isbn = '{isbn}';
+                SELECT 
+                    book.title as title,
+                    STRING_AGG(DISTINCT authors_contrib.name, ', ') AS authors,
+                    STRING_AGG(DISTINCT publishes_contrib.name, ', ') AS publishers,
+                    book.length,
+                    CASE 
+                        WHEN book.audience = 0 THEN 'Kids'
+                        WHEN book.audience = 1 THEN 'Teens'
+                        WHEN book.audience = 2 THEN 'Adults'
+                        ELSE 'Unknown'
+                    END AS audience,
+                    rates.rates AS rating
+                FROM 
+                    book
+                JOIN
+                    authors ON book.isbn = authors.isbn
+                JOIN 
+                    contributor AS authors_contrib ON authors.contributorID = authors_contrib.contributorID
+                JOIN 
+                    publishes ON book.isbn = publishes.isbn
+                JOIN 
+                    contributor AS publishes_contrib ON publishes.contributorID = publishes_contrib.contributorID
+                JOIN 
+                    rates ON book.isbn = rates.isbn
+                WHERE 
+                    rates.username = '{self.__current_user}' AND
+                    book.isbn = {isbn}
+                GROUP BY
+                    rates.rates, book.title, book.length, book.audience;
                 """
 
         self.__cursor.execute(query)
-        rows = self.__cursor.fetchall()
 
-        if len(rows) == 0:
-            return False
-
-        return rows[0]
+        return self.__cursor.fetchone()
 
     def search_for_users(self, email: str) -> list[tuple]:
         """
@@ -142,7 +164,7 @@ class DataInteraction:
         :return: List of all user accounts
         """
         query = f"""
-                    SELECT * FROM users WHERE email = '{email}';
+                    SELECT username FROM users WHERE email = '{email}';
                 """
 
         self.__cursor.execute(query)
@@ -158,7 +180,14 @@ class DataInteraction:
         :param followee: Username of person to follow
         :return: If successful
         """
-        pass
+        query = f"""
+                    INSERT INTO follows (followerusername, followeeusername)
+                    VALUES ('{self.__current_user}', '{followee}');
+                """
+
+        self.__cursor.execute(query)
+
+        return self.__cursor.rowcount != 0
 
     def unfollow_user(self, followee: str) -> bool:
         """
@@ -168,7 +197,14 @@ class DataInteraction:
         :param followee: Person to unfollow by username
         :return: If successful
         """
-        pass
+        query = f"""
+            DELETE from follows WHERE followerusername = '{self.__current_user}'
+            AND followeeusername = '{followee}';
+        """
+
+        self.__cursor.execute(query)
+
+        return self.__cursor.rowcount != 0
 
     def list_followers(self) -> list[str]:
         """
@@ -176,7 +212,14 @@ class DataInteraction:
 
         :return: List of usernames that follow current user
         """
-        pass
+        query = f"""
+                    SELECT followerusername FROM follows WHERE followeeusername = '{self.__current_user}';
+                """
+
+        self.__cursor.execute(query)
+        rows = self.__cursor.fetchall()
+        
+        return rows
 
     def list_following(self) -> list[str]:
         """
@@ -184,7 +227,14 @@ class DataInteraction:
 
         :return: Usernames of following
         """
-        pass
+        query = f"""
+                    SELECT followeeusername FROM follows WHERE followerusername = '{self.__current_user}';
+                """
+
+        self.__cursor.execute(query)
+        rows = self.__cursor.fetchall()
+        
+        return rows
 
     def create_collection(self, collection_name: str, book_isbns: list[str]) -> bool:
         """
@@ -195,7 +245,47 @@ class DataInteraction:
         :param book_isbns: List of ISBNs for books to add to the collection
         :return: If successful
         """
-        pass
+
+        success = True
+
+        # TODO: Is collection_id autoincremented?
+        query = f"""
+                    INSERT INTO collections (name)
+                    VALUES ('{collection_name}');
+                """
+        
+        self.__cursor.execute(query)
+
+        query = f"""
+                    SELECT collectionid from collections where name = '{collection_name}';
+                """
+        
+        if self.__cursor.rowcount == 0:
+            return False
+        
+        self.__cursor.execute(query)
+        row = self.__cursor.fetchone()
+
+        if row == None:
+            return False
+        
+        collectionid = row[0]
+
+        if (self.__cursor.rowcount != 0):
+            for isbn in book_isbns:
+                query = f"""
+                    INSERT INTO belongs_to (collectionid, isbn)
+                    VALUES ({collectionid}, '{isbn}');
+                """
+        
+                self.__cursor.execute(query)
+
+                if (self.__cursor.rowcount == 0):
+                    success = False
+        else:
+            success = False
+        
+        return success
 
     def add_books_to_collection(self, collection_name: str, book_isbns: list[str]) -> bool:
         """
@@ -206,7 +296,31 @@ class DataInteraction:
         :param book_isbns: List of books to add by ISBN
         :return: If all were added
         """
-        pass
+        success = True
+        
+        query = f"""
+                    SELECT collectionid from collections where name = '{collection_name}';
+                """
+        self.__cursor.execute(query)
+        row = self.__cursor.fetchone()
+
+        if row == None:
+            return False
+        
+        collectionid = row[0]
+
+        for isbn in book_isbns:
+            query = f"""
+                INSERT INTO belongs_to (collectionid, isbn)
+                VALUES ({collectionid}, '{isbn}');
+            """
+    
+            self.__cursor.execute(query)
+
+            if (self.__cursor.rowcount == 0):
+                success = False
+
+        return success
 
     def remove_books_from_collection(self, collection_name: str, book_isbns: list[str]) -> bool:
         """
@@ -217,7 +331,32 @@ class DataInteraction:
         :param book_isbns: List of books to remove by ISBN
         :return: If all were removed
         """
-        pass
+        success = True
+        
+        query = f"""
+                    SELECT collectionid from collections where name = '{collection_name}';
+                """
+        self.__cursor.execute(query)
+        row = self.__cursor.fetchone()
+
+        if row == None:
+            return False
+        
+        collectionid = row[0]
+
+        for isbn in book_isbns:
+            query = f"""
+                REMOVE FROM belongs_to
+                WHERE collectionid = {collectionid}
+                AND isbn = {isbn};
+            """
+    
+            self.__cursor.execute(query)
+
+            if (self.__cursor.rowcount == 0):
+                success = False
+
+        return success
 
     def delete_collection(self, collection_name: str) -> bool:
         """
@@ -227,7 +366,13 @@ class DataInteraction:
         :param collection_name: Name of collection
         :return: If successful
         """
-        pass
+
+        query = f"""
+                    DELETE FROM collections where name = '{collection_name}';
+                """
+        self.__cursor.execute(query)
+        
+        return self.__cursor.rowcount != 0
 
     def rename_collection(self, current_name: str, new_name: str) -> bool:
         """
@@ -238,7 +383,14 @@ class DataInteraction:
         :param new_name: New name of collection
         :return: If successful
         """
-        pass
+        query = f"""
+                    UPDATE collections SET name = {new_name}
+                    WHERE name = {current_name};
+                """
+        self.__cursor.execute(query)
+        
+        return self.__cursor.rowcount != 0
+    
 
     def list_collections(self) -> list[tuple[str, int, int]]:
         """
@@ -247,7 +399,16 @@ class DataInteraction:
 
         :return: List of all collections as tuple(name, number of books, total page count)
         """
-        pass
+        query = f"""
+                    SELECT collections.name, COUNT(book.isbn) as num_books,
+                    SUM(book.length) from book JOIN belongs_to WHERE
+                    GROUP BY book.isbn;
+                """
+
+        self.__cursor.execute(query)
+        rows = self.__cursor.fetchall()
+        
+        return rows
 
     def get_collection_contents(self, collection_name: str) -> list[tuple[str, list[str], str, int, str, int]]:
         """
