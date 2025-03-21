@@ -71,6 +71,7 @@ class Interface:
 
         :param books: List of books as tuple(name, authors, publisher, length, audience, rating)
         """
+        # TODO: Assume that "authors" is a string separated by ", "
         # Join up the authors list
         books = [(name, ", ".join(authors), publisher, length, audience, rating) \
                    for (name, authors, publisher, length, audience, rating) in books]
@@ -150,6 +151,7 @@ class Interface:
             print("Account created successfully! Logged in.")
             return True
         else:
+            # TODO: Should probably print a failure msg here
             return False
 
     def create_collection(self) -> bool:
@@ -249,6 +251,8 @@ class Interface:
         if results == False:
             print("Failed to search database for books")
             return False
+        
+        # TODO: Need to handle 'None' return value
 
         self.__display_books(results)
 
@@ -376,6 +380,7 @@ class Interface:
 
         star_rating = 0
 
+        # TODO: What's going on here?
         while 1 <= star_rating <= 5:
             star_rating = int(input("Enter new rating to set [1, 5]: "))
 

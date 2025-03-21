@@ -61,19 +61,9 @@ class DataInteraction:
             
             self.__cursor = self.__connection.cursor()
             self.__current_user = None
-        except:
-            try:
-                self.__cursor.close()
-            except:
-                pass
-            try:
-                self.__connection.close()
-            except:
-                pass
-            try:
-                self.__sshTunnel.close()
-            except:
-                pass
+        except Exception as e:
+            self.shutdown()
+            raise Exception(e)
 
     def login(self, username: str, password: str) -> bool:
         """
@@ -128,12 +118,16 @@ class DataInteraction:
 
         try:
             query = f"""
-                        INSERT INTO users (username, name, email, password) VALUES('{username}', '{name}', '{email}', '{password}');
+                        INSERT INTO users
+                            (username, name, email, password, datecreated, lastaccessed)
+                        VALUES
+                            ('{username}', '{name}', '{email}', '{password}',
+                            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
                     """
 
             self.__cursor.execute(query)
 
-            if (self.__cursor.rowcount):
+            if (self.__cursor.rowcount == 0):
                 return False
 
             # If successfully created the account then set username
@@ -174,10 +168,9 @@ class DataInteraction:
                         publishes ON book.isbn = publishes.isbn
                     JOIN 
                         contributor AS publishes_contrib ON publishes.contributorID = publishes_contrib.contributorID
-                    JOIN 
-                        rates ON book.isbn = rates.isbn
-                    WHERE 
-                        rates.username = '{self.__current_user}' AND
+                    LEFT JOIN 
+                        rates ON book.isbn = rates.isbn AND rates.username = '{self.__current_user}'
+                    WHERE
                         book.isbn = '{isbn}'
                     GROUP BY
                         rates.rates, book.title, book.length, book.audience;
@@ -416,7 +409,7 @@ class DataInteraction:
 
             for isbn in book_isbns:
                 query = f"""
-                    REMOVE FROM belongs_to
+                    DELETE FROM belongs_to
                     WHERE collectionid = {collectionid}
                     AND isbn = '{isbn}';
                 """
@@ -459,9 +452,10 @@ class DataInteraction:
         :return: If successful
         """
         try:
+            # TODO: Why are we capping collection name at 20 chars
             query = f"""
-                        UPDATE collections SET name = {new_name}
-                        WHERE name = {current_name};
+                        UPDATE collections SET name = '{new_name}'
+                        WHERE name = '{current_name}';
                     """
             self.__cursor.execute(query)
             
@@ -504,22 +498,44 @@ class DataInteraction:
         :param collection_name: Name of the collection to search
         :return: List of books as tuple(name, authors, publisher, length, audience, rating)
         """
-        try:
+        try:            
             query = f"""
-                        SELECT collections.name, COUNT(belongs_to.isbn) AS num_books,
-                        SUM(book.length) AS total_page_count
-                        FROM
-                            collections
-                        JOIN
-                            belongs_to ON collections.collectionid = belongs_to.collectionid
-                        JOIN
-                            book ON book.isbn = belongs_to.isbn
-                        WHERE collections.name = '{collection_name}'
-                        GROUP BY collections.name;
+                    SELECT 
+                        book.title as title,
+                        STRING_AGG(DISTINCT authors_contrib.name, ', ') AS authors,
+                        STRING_AGG(DISTINCT publishes_contrib.name, ', ') AS publishers,
+                        book.length,
+                        CASE 
+                            WHEN book.audience = 0 THEN 'Kids'
+                            WHEN book.audience = 1 THEN 'Teens'
+                            WHEN book.audience = 2 THEN 'Adults'
+                            ELSE 'Unknown'
+                        END AS audience,
+                        rates.rates AS rating
+                    FROM 
+                        collections
+                    JOIN
+                        belongs_to ON collections.collectionid = belongs_to.collectionid
+                    JOIN
+                        book ON book.isbn = belongs_to.isbn
+                    JOIN
+                        authors ON book.isbn = authors.isbn
+                    JOIN 
+                        contributor AS authors_contrib ON authors.contributorID = authors_contrib.contributorID
+                    JOIN 
+                        publishes ON book.isbn = publishes.isbn
+                    JOIN 
+                        contributor AS publishes_contrib ON publishes.contributorID = publishes_contrib.contributorID
+                    LEFT JOIN 
+                        rates ON book.isbn = rates.isbn AND rates.username = '{self.__current_user}'
+                    WHERE
+                        collections.name = '{collection_name}'
+                    GROUP BY
+                        rates.rates, book.title, book.length, book.audience;
                     """
 
             self.__cursor.execute(query)
-            rows = self.__cursor.fetchone()
+            rows = self.__cursor.fetchall()
             
             return rows
         except:
@@ -536,8 +552,8 @@ class DataInteraction:
         :return: List of matching books in ascending alphabetical order tuple(name, authors, publisher, length,
                                                                                 audience, rating)
         """
-        # TODO: This only works with books rated by the current user
-
+        # TODO: Why are we not listing genre
+        # TODO: Test this more thoroughly
         try:
             search_method_str = None
 
@@ -563,6 +579,7 @@ class DataInteraction:
             else:
                 sort_by_str = "book.title"
 
+            # TODO: category doesnt seem to have all isbns
             query = f"""
                     SELECT 
                         book.title as title,
@@ -586,17 +603,17 @@ class DataInteraction:
                         publishes ON book.isbn = publishes.isbn
                     JOIN 
                         contributor AS publishes_contrib ON publishes.contributorID = publishes_contrib.contributorID
-                    JOIN 
-                        rates ON book.isbn = rates.isbn
-                    JOIN
-                        category ON category.isbn = rates.isbn
-                    JOIN
-                        genre ON genre.name = category.genreid
-                    WHERE 
-                        rates.username = '{self.__current_user}' AND
+                    LEFT JOIN 
+                        rates ON book.isbn = rates.isbn AND rates.username = '{self.__current_user}'
+                    LEFT JOIN
+                        category ON category.isbn = book.isbn
+                    LEFT JOIN
+                        genre ON genre.genreid = category.genreid
+                    WHERE
                         {search_method_str} = '{val}'
                     GROUP BY
-                        rates.rates, book.title, book.length, book.audience, book.releasedate
+                        rates.rates, book.title, book.length, book.audience, book.releasedate,
+                        publishes_contrib.name, genre.name, book.releasedate
                     ORDER BY
                         {sort_by_str}
                         {"ASC" if ascending else "DESC"};
@@ -604,7 +621,9 @@ class DataInteraction:
 
             self.__cursor.execute(query)
 
-            return self.__cursor.fetchone()
+            rows = self.__cursor.fetchall()
+
+            return rows
         except:
             return False
 
@@ -620,6 +639,15 @@ class DataInteraction:
         :return: If successful
         """
         try:
+            # Check if book exists
+            query = f"""
+                        SELECT * FROM book WHERE isbn = '{book_isbn}';
+                    """
+            self.__cursor.execute(query)
+
+            if self.__cursor.rowcount == 0:
+                return False
+            
             query = f"""
                         SELECT * FROM rates WHERE username = '{self.__current_user}'
                         AND isbn = '{book_isbn}';
@@ -628,16 +656,16 @@ class DataInteraction:
             
             if (self.__cursor.rowcount == 0):
                 query = f"""
-                        INSERT INTO rates (username, isbn, rates)
-                        VALUES ('{self.__current_user}', '{book_isbn}', {rating});
-                    """
+                            INSERT INTO rates (username, isbn, rates)
+                            VALUES ('{self.__current_user}', '{book_isbn}', {rating});
+                        """
                 self.__cursor.execute(query)
             else:
                 query = f"""
-                        UPDATE rates SET rates = {rating}
-                        WHERE username = '{self.__current_user}'
-                        AND isbn = '{book_isbn}';
-                    """
+                            UPDATE rates SET rates = {rating}
+                            WHERE username = '{self.__current_user}'
+                            AND isbn = '{book_isbn}';
+                        """
                 self.__cursor.execute(query)
             
             return self.__cursor.rowcount != 0
@@ -696,10 +724,12 @@ class DataInteraction:
                         JOIN
                             book ON book.isbn = belongs_to.isbn
                         WHERE collections.name = '{collection_name}'
-                        GROUP BY GROUP BY book.isbn, book.title
+                        GROUP BY book.isbn, book.title
                         ORDER BY RANDOM()
                         LIMIT 1;
                     """
+            
+            self.__cursor.execute(query)
             
             if (self.__cursor.rowcount == 0):
                 return ""
@@ -726,16 +756,25 @@ class DataInteraction:
             self.__cursor.execute(query)
 
             if self.__cursor.rowcount == 0:
-                return None
+                return ""
             
             return book_name
         except:
             return False
 
     def shutdown(self):
-        self.__cursor.close()
-        self.__connection.close()
-        self.__sshTunnel.close()
+        try:
+            self.__cursor.close()
+        except:
+            pass
+        try:
+            self.__connection.close()
+        except:
+            pass
+        try:
+            self.__sshTunnel.close()
+        except:
+            pass
 
     def get_current_user(self):
         return self.__current_user

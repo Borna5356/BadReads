@@ -13,11 +13,16 @@ def main():
             if command in interface.command_mapping.keys():
                 interface.command_mapping[command]()
             elif command == "exit":
+                interface.shutdown()
                 break
             else:
                 print("Unrecognized command.")
 
         except KeyboardInterrupt:
+            interface.shutdown()
+            break
+        except Exception as e:
+            print(e)
             interface.shutdown()
             break
 
