@@ -84,6 +84,8 @@ class DataInteraction:
 
             if (self.__cursor.rowcount == 0):
                 return False
+            
+            # TODO: Update lastaccessed
 
             # If successfully logged the log in then current user should be set
             self.__current_user = username
@@ -476,11 +478,15 @@ class DataInteraction:
                         SELECT collections.name, COUNT(belongs_to.isbn) AS num_books,
                         SUM(book.length) AS total_page_count
                         FROM
-                            collections
+                            creates
+                        JOIN
+                            collections ON creates.collectionid = collections.collectionid
                         JOIN
                             belongs_to ON collections.collectionid = belongs_to.collectionid
                         JOIN
                             book ON book.isbn = belongs_to.isbn
+                        WHERE
+                            creates.username = '{self.__current_user}'
                         GROUP BY collections.name;
                     """
 
