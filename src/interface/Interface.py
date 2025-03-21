@@ -69,9 +69,9 @@ class Interface:
         """
         Print a list of books as a table
 
-        :param books: List of books as tuple(name, authors, publisher, length, audience, rating)
+        :param books: List of books as tuple(name, authors, publisher, length, audience, rating, isbn)
         """
-        headers = ["Book name", "Authors", "Publisher", "Length", "Audience", "Rating"]
+        headers = ["Book name", "Authors", "Publisher", "Length", "Audience", "Rating", "ISBN"]
 
         table = tabulate(books, headers=headers, tablefmt="grid")
 
@@ -377,7 +377,7 @@ class Interface:
 
         star_rating = 0
 
-        while 1 <= star_rating <= 5:
+        while not (1 <= star_rating <= 5):
             star_rating = int(input("Enter new rating to set [1, 5]: "))
 
         if self.database.rate_book(book_isbn, star_rating):
@@ -456,7 +456,7 @@ class Interface:
         print("User accounts found:")
 
         for user in usernames:
-            print(user)
+            print(user[0])
 
         return True
 
