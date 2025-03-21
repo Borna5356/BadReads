@@ -556,21 +556,21 @@ class DataInteraction:
         :param sort_by: Option to sort the resulting list by specified in the enum
         :param ascending: If we sort in ascending order or False for descending order
         :return: List of matching books in ascending alphabetical order tuple(name, authors, publisher, length,
-                                                                                audience, rating)
+                                                                                audience, rating, isbn)
         """
         try:
             search_method_str = None
 
             if (search_method == SearchMethods.BOOK_NAME):
-                search_method_str = "book.title"
+                search_method_str = f"book.title LIKE '%{val}%'"
             elif (search_method == SearchMethods.RELEASE_DATE):
-                search_method_str = "book.releasedate"
+                search_method_str = f"book.releasedate = '{val}'"
             elif (search_method == SearchMethods.AUTHOR):
-                search_method_str = "authors_contrib.name"
+                search_method_str = f"authors_contrib.name = '{val}'"
             elif (search_method == SearchMethods.PUBLISHER):
-                search_method_str = "publishes_contrib.name"
+                search_method_str = f"publishes_contrib.name = '{val}'"
             else:
-                search_method_str = "genre.name"
+                search_method_str = f"genre.name = '{val}'"
 
             sort_by_str = None
 
@@ -596,7 +596,8 @@ class DataInteraction:
                             WHEN book.audience = 2 THEN 'Adults'
                             ELSE 'Unknown'
                         END AS audience,
-                        rates.rates AS rating
+                        rates.rates AS rating,
+                        book.isbn
                     FROM 
                         book
                     JOIN
@@ -614,10 +615,10 @@ class DataInteraction:
                     LEFT JOIN
                         genre ON genre.genreid = category.genreid
                     WHERE
-                        {search_method_str} = '{val}'
+                        {search_method_str}
                     GROUP BY
                         rates.rates, book.title, book.length, book.audience, book.releasedate,
-                        publishes_contrib.name, genre.name, book.releasedate
+                        publishes_contrib.name, genre.name, book.releasedate, book.isbn
                     ORDER BY
                         {sort_by_str}
                         {"ASC" if ascending else "DESC"};
