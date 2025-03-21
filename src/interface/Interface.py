@@ -2,7 +2,7 @@ from getpass import getpass
 from tabulate import tabulate
 
 from data_interaction.DataInteraction import DataInteraction
-from data_interaction.DataInteraction import SortOptions
+from data_interaction.DataInteraction import SortOptions, SearchMethods
 
 
 class Interface:
@@ -227,8 +227,20 @@ class Interface:
         else:
             order_by_enum = SortOptions.BOOK_NAME
 
+        search_method_enum = None
+        if search_method == "name":
+            search_method_enum = SearchMethods.BOOK_NAME
+        elif search_method == "release_date":
+            search_method_enum = SearchMethods.RELEASE_DATE
+        elif search_method == "author":
+            search_method_enum = SearchMethods.AUTHOR
+        elif search_method == "publisher":
+            search_method_enum = SearchMethods.PUBLISHER
+        else:
+            search_method_enum = SearchMethods.GENRE
 
-        results = self.database.search_for_book(search_method, search_val, order_by_enum, ascending)
+
+        results = self.database.search_for_book(search_method_enum, search_val, order_by_enum, ascending)
 
         self.__display_books(results)
 

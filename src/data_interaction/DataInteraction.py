@@ -1,5 +1,6 @@
 from enum import Enum
 import json
+import random
 
 import psycopg2
 from sshtunnel import SSHTunnelForwarder
@@ -10,47 +11,69 @@ class SortOptions(Enum):
     GENRE = 3
     RELEASED_YEAR = 4
 
+class SearchMethods(Enum):
+    BOOK_NAME = 1
+    RELEASE_DATE = 2
+    AUTHOR = 3
+    PUBLISHER = 4
+    GENRE = 5
+    
+
 CONFIG_FILENAME = "../config.json"
 
 class DataInteraction:
     __slots__ = ["__sshTunnel", "__connection", "__cursor", "__current_user"]
 
     def __init__(self):
-        # Get login credentials
-        with open(CONFIG_FILENAME, 'r') as file:
-            credentials = json.load(file)
+        try:
+            # Get login credentials
+            with open(CONFIG_FILENAME, 'r') as file:
+                credentials = json.load(file)
 
-        # Data for connection
-        ssh_host = "starbug.cs.rit.edu"
-        ssh_port = 22
-        sql_host = "127.0.0.1"
-        sql_port = 5432
-        db = "p32001_13"
-        username = credentials["username"]
-        password = credentials["password"]
-        
-        # Establish connection via ssh tunneling
-        self.__sshTunnel = SSHTunnelForwarder(
-            (ssh_host, ssh_port),
-            ssh_username = username,
-            ssh_password = password,
-            remote_bind_address = (sql_host, sql_port),
-            local_bind_address = (sql_host, sql_port)
-        )
+            # Data for connection
+            ssh_host = "starbug.cs.rit.edu"
+            ssh_port = 22
+            sql_host = "127.0.0.1"
+            sql_port = 5432
+            db = "p32001_13"
+            username = credentials["username"]
+            password = credentials["password"]
+            
+            # Establish connection via ssh tunneling
+            self.__sshTunnel = SSHTunnelForwarder(
+                (ssh_host, ssh_port),
+                ssh_username = username,
+                ssh_password = password,
+                remote_bind_address = (sql_host, sql_port),
+                local_bind_address = (sql_host, sql_port)
+            )
 
-        self.__sshTunnel.start()
+            self.__sshTunnel.start()
 
-        self.__connection = psycopg2.connect(
-            host = self.__sshTunnel.local_bind_host,
-            port = self.__sshTunnel.local_bind_port,
-            database = db,
-            user = username,
-            password = password
-        )
-        self.__connection.autocommit = True
-        
-        self.__cursor = self.__connection.cursor()
-        self.__current_user = None
+            self.__connection = psycopg2.connect(
+                host = self.__sshTunnel.local_bind_host,
+                port = self.__sshTunnel.local_bind_port,
+                database = db,
+                user = username,
+                password = password
+            )
+            self.__connection.autocommit = True
+            
+            self.__cursor = self.__connection.cursor()
+            self.__current_user = None
+        except:
+            try:
+                self.__cursor.close()
+            except:
+                pass
+            try:
+                self.__connection.close()
+            except:
+                pass
+            try:
+                self.__sshTunnel.close()
+            except:
+                pass
 
     def login(self, username: str, password: str) -> bool:
         """
@@ -155,7 +178,7 @@ class DataInteraction:
                         rates ON book.isbn = rates.isbn
                     WHERE 
                         rates.username = '{self.__current_user}' AND
-                        book.isbn = {isbn}
+                        book.isbn = '{isbn}'
                     GROUP BY
                         rates.rates, book.title, book.length, book.audience;
                     """
@@ -286,6 +309,9 @@ class DataInteraction:
             
             self.__cursor.execute(query)
 
+            if (self.__cursor.rowcount == 0):
+                return False
+
             query = f"""
                         SELECT collectionid from collections where name = '{collection_name}';
                     """
@@ -301,12 +327,19 @@ class DataInteraction:
             
             collectionid = row[0]
 
+            query = f"""
+                        INSERT INTO creates (username, collectionid)
+                        VALUES ('{self.__current_user}', {collectionid});
+                    """
+            
+            self.__cursor.execute(query)
+
             if (self.__cursor.rowcount != 0):
                 for isbn in book_isbns:
                     query = f"""
-                        INSERT INTO belongs_to (collectionid, isbn)
-                        VALUES ({collectionid}, '{isbn}');
-                    """
+                                INSERT INTO belongs_to (collectionid, isbn)
+                                VALUES ({collectionid}, '{isbn}');
+                            """
             
                     self.__cursor.execute(query)
 
@@ -385,7 +418,7 @@ class DataInteraction:
                 query = f"""
                     REMOVE FROM belongs_to
                     WHERE collectionid = {collectionid}
-                    AND isbn = {isbn};
+                    AND isbn = '{isbn}';
                 """
         
                 self.__cursor.execute(query)
@@ -451,10 +484,10 @@ class DataInteraction:
                         FROM
                             collections
                         JOIN
-                            belongs_to ON collection.id = belongs_to.collectionid
+                            belongs_to ON collections.collectionid = belongs_to.collectionid
                         JOIN
                             book ON book.isbn = belongs_to.isbn
-                        GROUP BY collections.name
+                        GROUP BY collections.name;
                     """
 
             self.__cursor.execute(query)
@@ -471,7 +504,26 @@ class DataInteraction:
         :param collection_name: Name of the collection to search
         :return: List of books as tuple(name, authors, publisher, length, audience, rating)
         """
-        pass
+        try:
+            query = f"""
+                        SELECT collections.name, COUNT(belongs_to.isbn) AS num_books,
+                        SUM(book.length) AS total_page_count
+                        FROM
+                            collections
+                        JOIN
+                            belongs_to ON collections.collectionid = belongs_to.collectionid
+                        JOIN
+                            book ON book.isbn = belongs_to.isbn
+                        WHERE collections.name = '{collection_name}'
+                        GROUP BY collections.name;
+                    """
+
+            self.__cursor.execute(query)
+            rows = self.__cursor.fetchone()
+            
+            return rows
+        except:
+            return False
 
     def search_for_book(self, search_method: str, val: str, sort_by: SortOptions, ascending: bool = True) -> list[tuple[str, list[str], str, int, str, int]]:
         """
@@ -484,7 +536,78 @@ class DataInteraction:
         :return: List of matching books in ascending alphabetical order tuple(name, authors, publisher, length,
                                                                                 audience, rating)
         """
-        pass
+        # TODO: This only works with books rated by the current user
+
+        try:
+            search_method_str = None
+
+            if (search_method == SearchMethods.BOOK_NAME):
+                search_method_str = "book.title"
+            elif (search_method == SearchMethods.RELEASE_DATE):
+                search_method_str = "book.releasedate"
+            elif (search_method == SearchMethods.AUTHOR):
+                search_method_str = "authors_contrib.name"
+            elif (search_method == SearchMethods.PUBLISHER):
+                search_method_str = "publishes_contrib.name"
+            else:
+                search_method_str = "genre.name"
+
+            sort_by_str = None
+
+            if (sort_by == SortOptions.PUBLISHER):
+                sort_by_str = "publishes_contrib.name"
+            elif (sort_by == SortOptions.GENRE):
+                sort_by_str = "genre.name"
+            elif (sort_by == SortOptions.RELEASED_YEAR):
+                sort_by_str = "EXTRACT(YEAR FROM book.releasedate)"
+            else:
+                sort_by_str = "book.title"
+
+            query = f"""
+                    SELECT 
+                        book.title as title,
+                        STRING_AGG(DISTINCT authors_contrib.name, ', ') AS authors,
+                        STRING_AGG(DISTINCT publishes_contrib.name, ', ') AS publishers,
+                        book.length,
+                        CASE 
+                            WHEN book.audience = 0 THEN 'Kids'
+                            WHEN book.audience = 1 THEN 'Teens'
+                            WHEN book.audience = 2 THEN 'Adults'
+                            ELSE 'Unknown'
+                        END AS audience,
+                        rates.rates AS rating
+                    FROM 
+                        book
+                    JOIN
+                        authors ON book.isbn = authors.isbn
+                    JOIN 
+                        contributor AS authors_contrib ON authors.contributorID = authors_contrib.contributorID
+                    JOIN 
+                        publishes ON book.isbn = publishes.isbn
+                    JOIN 
+                        contributor AS publishes_contrib ON publishes.contributorID = publishes_contrib.contributorID
+                    JOIN 
+                        rates ON book.isbn = rates.isbn
+                    JOIN
+                        category ON category.isbn = rates.isbn
+                    JOIN
+                        genre ON genre.name = category.genreid
+                    WHERE 
+                        rates.username = '{self.__current_user}' AND
+                        {search_method_str} = '{val}'
+                    GROUP BY
+                        rates.rates, book.title, book.length, book.audience, book.releasedate
+                    ORDER BY
+                        {sort_by_str}
+                        {"ASC" if ascending else "DESC"};
+                    """
+
+            self.__cursor.execute(query)
+
+            return self.__cursor.fetchone()
+        except:
+            return False
+
 
     def rate_book(self, book_isbn: str, rating: int) -> bool:
         """
@@ -496,7 +619,30 @@ class DataInteraction:
         :param rating: Rating of that book [1, 5]
         :return: If successful
         """
-        pass
+        try:
+            query = f"""
+                        SELECT * FROM rates WHERE username = '{self.__current_user}'
+                        AND isbn = '{book_isbn}';
+                    """
+            self.__cursor.execute(query)
+            
+            if (self.__cursor.rowcount == 0):
+                query = f"""
+                        INSERT INTO rates (username, isbn, rates)
+                        VALUES ('{self.__current_user}', '{book_isbn}', {rating});
+                    """
+                self.__cursor.execute(query)
+            else:
+                query = f"""
+                        UPDATE rates SET rates = {rating}
+                        WHERE username = '{self.__current_user}'
+                        AND isbn = '{book_isbn}';
+                    """
+                self.__cursor.execute(query)
+            
+            return self.__cursor.rowcount != 0
+        except:
+            return False
 
     def read_book_by_isbn(self, book_isbn: str, start_page: int, end_page: int) -> bool:
         """
@@ -508,19 +654,83 @@ class DataInteraction:
         :param end_page: End page for the reading session
         :return: If book read successfully
         """
-        pass
+        try:
+            numMins = random.randint(15, 300)
+
+            query = f"""
+                        INSERT INTO reads (username, isbn, starttime, endtime, startpage, endpage)
+                        VALUES
+                        (
+                            '{self.__current_user}',
+                            '{book_isbn}',
+                            CURRENT_TIMESTAMP,
+                            CURRENT_TIMESTAMP + INTERVAL '{numMins} minutes',
+                            {start_page},
+                            {end_page}
+                        );
+                    """
+                
+            self.__cursor.execute(query)
+
+            return self.__cursor.rowcount != 0
+        except:
+            return False
 
     def read_random_book_by_collection(self, collection_name: str, start_page: int, end_page: int) -> str:
         """
         Read a random book from a collection
         -- Collection name must exist
 
-        :param collection_name: Name of collection to select form
+        :param collection_name: Name of collection to select from
         :param start_page: Start page for reading session
         :param end_page: End page for reading session
         :return: Name of the book that was read, empty string if failed
         """
-        pass
+        try:
+            query = f"""
+                        SELECT book.isbn, book.title
+                        FROM
+                            collections
+                        JOIN
+                            belongs_to ON collections.collectionid = belongs_to.collectionid
+                        JOIN
+                            book ON book.isbn = belongs_to.isbn
+                        WHERE collections.name = '{collection_name}'
+                        GROUP BY GROUP BY book.isbn, book.title
+                        ORDER BY RANDOM()
+                        LIMIT 1;
+                    """
+            
+            if (self.__cursor.rowcount == 0):
+                return ""
+            
+            book_info = self.__cursor.fetchone()
+            book_isbn = book_info[0]
+            book_name = book_info[1]
+
+            numMins = random.randint(15, 300)
+
+            query = f"""
+                        INSERT INTO reads (username, isbn, starttime, endtime, startpage, endpage)
+                        VALUES
+                        (
+                            '{self.__current_user}',
+                            '{book_isbn}',
+                            CURRENT_TIMESTAMP,
+                            CURRENT_TIMESTAMP + INTERVAL '{numMins} minutes',
+                            {start_page},
+                            {end_page}
+                        );
+                    """
+                
+            self.__cursor.execute(query)
+
+            if self.__cursor.rowcount == 0:
+                return None
+            
+            return book_name
+        except:
+            return False
 
     def shutdown(self):
         self.__cursor.close()
