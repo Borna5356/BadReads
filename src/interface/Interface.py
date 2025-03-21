@@ -146,8 +146,8 @@ class Interface:
 
         # Now attempt to create the account
         if self.database.create_account(username, name, email, password):
+            self.database.login(username, password)
             print("Account created successfully! Logged in.")
-            self.database.get_current_user() = username
             return True
         else:
             return False
@@ -186,6 +186,10 @@ class Interface:
             return False
 
         collections = self.database.list_collections()
+
+        if collections == False:
+            print("Failed to read collections from database.")
+            return False
 
         if len(collections) == 0:
             print("You have no existing collections.")
@@ -241,6 +245,10 @@ class Interface:
 
 
         results = self.database.search_for_book(search_method_enum, search_val, order_by_enum, ascending)
+
+        if results == False:
+            print("Failed to search database for books")
+            return False
 
         self.__display_books(results)
 
@@ -336,6 +344,9 @@ class Interface:
 
         books = self.database.get_collection_contents(collection_name)
 
+        if books == False:
+            print("Failed to get collection contents from database")
+
         self.__display_books(books)
 
         return True
@@ -351,9 +362,17 @@ class Interface:
 
         book_isbn = str(input("Enter the ISBN of the book to rate: "))
 
-        if self.database.get_book_by_isbn(book_isbn) is None:
+        book_result = self.database.get_book_by_isbn(book_isbn)
+
+        if book_result is None:
             print("Book does not exist. Try again.")
             return False
+
+        if book_result == False:
+            print("Failed to search database for book.")
+            return False
+
+        print(f"Rating {book_result[0]}")
 
         star_rating = 0
 
@@ -406,7 +425,10 @@ class Interface:
         start_page = int(input("Enter start page: "))
         end_page = int(input("Enter end page: "))
 
-        if (book_name := self.database.read_random_book_by_collection(collection_name, start_page, end_page)) != "":
+        if (book_name := self.database.read_random_book_by_collection(collection_name, start_page, end_page)) == False:
+            print("Failed to get book from database.")
+            return False
+        elif book_name != "":
             print(f"Successfully read book: {book_name}.")
             return True
         else:
@@ -425,6 +447,10 @@ class Interface:
         email = str(input("Enter an email to search for users: "))
 
         usernames = self.database.search_for_users(email)
+
+        if usernames == False:
+            print("Failed to get usernames from database.")
+            return False
 
         print("User accounts found:")
 
@@ -479,6 +505,10 @@ class Interface:
             return False
 
         followers = self.database.list_followers()
+
+        if followers == False:
+            print("Failed to get followers from database.")
+            return False
 
         print("Followers:")
 
