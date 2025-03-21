@@ -502,7 +502,7 @@ class DataInteraction:
         Get a list of all books in a collection
 
         :param collection_name: Name of the collection to search
-        :return: List of books as tuple(name, authors, publisher, length, audience, rating)
+        :return: List of books as tuple(name, authors, publisher, length, audience, rating, isbn)
         """
         try:            
             query = f"""
@@ -517,7 +517,8 @@ class DataInteraction:
                             WHEN book.audience = 2 THEN 'Adults'
                             ELSE 'Unknown'
                         END AS audience,
-                        rates.rates AS rating
+                        rates.rates AS rating,
+                        book.isbn
                     FROM 
                         collections
                     JOIN
@@ -537,7 +538,7 @@ class DataInteraction:
                     WHERE
                         collections.name = '{collection_name}'
                     GROUP BY
-                        rates.rates, book.title, book.length, book.audience;
+                        rates.rates, book.title, book.length, book.audience, book.isbn;
                     """
 
             self.__cursor.execute(query)
