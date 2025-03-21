@@ -552,8 +552,6 @@ class DataInteraction:
         :return: List of matching books in ascending alphabetical order tuple(name, authors, publisher, length,
                                                                                 audience, rating)
         """
-        # TODO: Why are we not listing genre
-        # TODO: Test this more thoroughly
         try:
             search_method_str = None
 
