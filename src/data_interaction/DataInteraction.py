@@ -618,7 +618,7 @@ class DataInteraction:
             search_method_str = None
 
             if (search_method == SearchMethods.BOOK_NAME):
-                search_method_str = f"book.title LIKE '%{val}%'"
+                search_method_str = f"book.title ILIKE '%{val}%'"
             elif (search_method == SearchMethods.RELEASE_DATE):
                 search_method_str = f"book.releasedate = '{val}'"
             elif (search_method == SearchMethods.AUTHOR):
