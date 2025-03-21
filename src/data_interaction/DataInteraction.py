@@ -77,15 +77,14 @@ class DataInteraction:
 
         try:
             query = f"""
-                        SELECT * FROM users WHERE username = '{username}' AND password = '{password}';
+                        UPDATE users SET lastaccessed = CURRENT_TIMESTAMP
+                        WHERE username = '{username}' AND password = '{password}';
                     """
 
             self.__cursor.execute(query)
 
             if (self.__cursor.rowcount == 0):
                 return False
-            
-            # TODO: Update lastaccessed
 
             # If successfully logged the log in then current user should be set
             self.__current_user = username
@@ -296,7 +295,6 @@ class DataInteraction:
         try:
             success = True
 
-            # TODO: Is collection_id autoincremented?
             query = f"""
                         INSERT INTO collections (name)
                         VALUES ('{collection_name}');
@@ -357,17 +355,22 @@ class DataInteraction:
         :return: If all were added
         """
         try:
-            success = True
-            
-            query = f"""
-                        SELECT collectionid from collections where name = '{collection_name}';
+            query = f"""SELECT creates.collectionid
+                        FROM
+                            creates
+                        JOIN
+                            collections ON creates.collectionid = collections.collectionid
+                        WHERE
+                            creates.username = '{self.__current_user}';
                     """
             self.__cursor.execute(query)
-            row = self.__cursor.fetchone()
-
-            if row == None:
+            
+            if self.__cursor.rowcount == 0:
                 return False
             
+            success = True
+            
+            row = self.__cursor.fetchone()            
             collectionid = row[0]
 
             for isbn in book_isbns:
@@ -396,17 +399,22 @@ class DataInteraction:
         """
 
         try:
-            success = True
-            
-            query = f"""
-                        SELECT collectionid from collections where name = '{collection_name}';
+            query = f"""SELECT creates.collectionid
+                        FROM
+                            creates
+                        JOIN
+                            collections ON creates.collectionid = collections.collectionid
+                        WHERE
+                            creates.username = '{self.__current_user}';
                     """
             self.__cursor.execute(query)
-            row = self.__cursor.fetchone()
-
-            if row == None:
+            
+            if self.__cursor.rowcount == 0:
                 return False
             
+            success = True
+            
+            row = self.__cursor.fetchone()            
             collectionid = row[0]
 
             for isbn in book_isbns:
@@ -435,9 +443,44 @@ class DataInteraction:
         """
 
         try:
+            query = f"""SELECT creates.collectionid
+                        FROM
+                            creates
+                        JOIN
+                            collections ON creates.collectionid = collections.collectionid
+                        WHERE
+                            creates.username = '{self.__current_user}';
+                    """
+            self.__cursor.execute(query)
+            
+            if self.__cursor.rowcount == 0:
+                return False
+            
+            row = self.__cursor.fetchone()            
+            collectionid = row[0]
+        
+            query = f"""
+                        DELETE FROM belongs_to WHERE collectionid = {collectionid};
+                    """
+
+            self.__cursor.execute(query)
+            
+            if self.__cursor.rowcount == 0:
+                return False
+            
+            query = f"""
+                        DELETE FROM creates WHERE username = '{self.__current_user}'
+                        AND collectionid = {collectionid};
+                    """
+            self.__cursor.execute(query)
+            
+            if self.__cursor.rowcount == 0:
+                return False
+            
             query = f"""
                         DELETE FROM collections where name = '{collection_name}';
                     """
+
             self.__cursor.execute(query)
             
             return self.__cursor.rowcount != 0
@@ -454,7 +497,19 @@ class DataInteraction:
         :return: If successful
         """
         try:
-            # TODO: Why are we capping collection name at 20 chars
+            query = f"""SELECT creates.username
+                        FROM
+                            creates
+                        JOIN
+                            collections ON creates.collectionid = collections.collectionid
+                        WHERE
+                            creates.username = '{self.__current_user}';
+                    """
+            self.__cursor.execute(query)
+            
+            if self.__cursor.rowcount == 0:
+                return False
+            
             query = f"""
                         UPDATE collections SET name = '{new_name}'
                         WHERE name = '{current_name}';
@@ -481,9 +536,9 @@ class DataInteraction:
                             creates
                         JOIN
                             collections ON creates.collectionid = collections.collectionid
-                        JOIN
+                        LEFT JOIN
                             belongs_to ON collections.collectionid = belongs_to.collectionid
-                        JOIN
+                        LEFT JOIN
                             book ON book.isbn = belongs_to.isbn
                         WHERE
                             creates.username = '{self.__current_user}'
@@ -584,7 +639,6 @@ class DataInteraction:
             else:
                 sort_by_str = "book.title"
 
-            # TODO: category doesnt seem to have all isbns
             query = f"""
                     SELECT 
                         book.title as title,
