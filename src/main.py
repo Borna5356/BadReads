@@ -11,7 +11,12 @@ def main():
             command = str(input("> ")).lower()
 
             if command in interface.command_mapping.keys():
-                interface.command_mapping[command]()
+                # Running another try to catch any cancelled commands
+                try:
+                    interface.command_mapping[command]()
+                except KeyboardInterrupt:
+                    print()
+                    continue
             elif command == "exit":
                 interface.shutdown()
                 break
