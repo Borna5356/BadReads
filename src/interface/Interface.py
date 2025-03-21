@@ -71,11 +71,6 @@ class Interface:
 
         :param books: List of books as tuple(name, authors, publisher, length, audience, rating)
         """
-        # TODO: Assume that "authors" is a string separated by ", "
-        # Join up the authors list
-        books = [(name, ", ".join(authors), publisher, length, audience, rating) \
-                   for (name, authors, publisher, length, audience, rating) in books]
-
         headers = ["Book name", "Authors", "Publisher", "Length", "Audience", "Rating"]
 
         table = tabulate(books, headers=headers, tablefmt="grid")
@@ -151,7 +146,7 @@ class Interface:
             print("Account created successfully! Logged in.")
             return True
         else:
-            # TODO: Should probably print a failure msg here
+            print("Failed to create an account.")
             return False
 
     def create_collection(self) -> bool:
@@ -249,10 +244,12 @@ class Interface:
         results = self.database.search_for_book(search_method_enum, search_val, order_by_enum, ascending)
 
         if results == False:
-            print("Failed to search database for books")
+            print("Failed to search database for books.")
             return False
         
-        # TODO: Need to handle 'None' return value
+        if results is None:
+            print("No books found.")
+            return False
 
         self.__display_books(results)
 
@@ -380,7 +377,6 @@ class Interface:
 
         star_rating = 0
 
-        # TODO: What's going on here?
         while 1 <= star_rating <= 5:
             star_rating = int(input("Enter new rating to set [1, 5]: "))
 
@@ -518,7 +514,7 @@ class Interface:
         print("Followers:")
 
         for follower in followers:
-            print(follower)
+            print(follower[0])
 
         return True
 
@@ -536,7 +532,7 @@ class Interface:
         print("Following:")
 
         for f in following:
-            print(f)
+            print(f[0])
 
         return True
     
