@@ -297,7 +297,8 @@ class DataInteraction:
 
             query = f"""
                         INSERT INTO collections (name)
-                        VALUES ('{collection_name}');
+                        VALUES ('{collection_name}')
+                        RETURNING collectionid;
                     """
             
             self.__cursor.execute(query)
@@ -305,19 +306,7 @@ class DataInteraction:
             if (self.__cursor.rowcount == 0):
                 return False
 
-            query = f"""
-                        SELECT collectionid from collections where name = '{collection_name}';
-                    """
-            
-            if self.__cursor.rowcount == 0:
-                return False
-            
-            self.__cursor.execute(query)
-            row = self.__cursor.fetchone()
-
-            if row == None:
-                return False
-            
+            row = self.__cursor.fetchone()            
             collectionid = row[0]
 
             query = f"""
@@ -361,7 +350,8 @@ class DataInteraction:
                         JOIN
                             collections ON creates.collectionid = collections.collectionid
                         WHERE
-                            creates.username = '{self.__current_user}';
+                            creates.username = '{self.__current_user}'
+                            AND collections.name = '{collection_name}';
                     """
             self.__cursor.execute(query)
             
@@ -405,7 +395,8 @@ class DataInteraction:
                         JOIN
                             collections ON creates.collectionid = collections.collectionid
                         WHERE
-                            creates.username = '{self.__current_user}';
+                            creates.username = '{self.__current_user}'
+                            AND collections.name = '{collection_name}';
                     """
             self.__cursor.execute(query)
             
@@ -476,7 +467,7 @@ class DataInteraction:
                 return False
             
             query = f"""
-                        DELETE FROM collections where name = '{collection_name}';
+                        DELETE FROM collections where collectionid = {collectionid};
                     """
 
             self.__cursor.execute(query)
@@ -575,6 +566,8 @@ class DataInteraction:
                     FROM 
                         collections
                     JOIN
+                        creates ON creates.collectionid = collections.collectionid
+                    JOIN
                         belongs_to ON collections.collectionid = belongs_to.collectionid
                     JOIN
                         book ON book.isbn = belongs_to.isbn
@@ -589,7 +582,7 @@ class DataInteraction:
                     LEFT JOIN 
                         rates ON book.isbn = rates.isbn AND rates.username = '{self.__current_user}'
                     WHERE
-                        collections.name = '{collection_name}'
+                        collections.name = '{collection_name}' AND creates.username = '{self.__current_user}'
                     GROUP BY
                         rates.rates, book.title, book.length, book.audience, book.isbn;
                     """
@@ -778,10 +771,13 @@ class DataInteraction:
                         FROM
                             collections
                         JOIN
+                            creates on creates.collectionid = collections.collectionid
+                        JOIN
                             belongs_to ON collections.collectionid = belongs_to.collectionid
                         JOIN
                             book ON book.isbn = belongs_to.isbn
                         WHERE collections.name = '{collection_name}'
+                            AND creates.username = '{self.__current_user}'
                         GROUP BY book.isbn, book.title
                         ORDER BY RANDOM()
                         LIMIT 1;
