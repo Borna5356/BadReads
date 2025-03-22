@@ -449,7 +449,8 @@ class DataInteraction:
                         JOIN
                             collections ON creates.collectionid = collections.collectionid
                         WHERE
-                            creates.username = '{self.__current_user}';
+                            creates.username = '{self.__current_user}'
+                            AND collections.name = '{collection_name}';
                     """
             self.__cursor.execute(query)
             
@@ -464,9 +465,6 @@ class DataInteraction:
                     """
 
             self.__cursor.execute(query)
-            
-            if self.__cursor.rowcount == 0:
-                return False
             
             query = f"""
                         DELETE FROM creates WHERE username = '{self.__current_user}'
