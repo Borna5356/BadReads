@@ -28,7 +28,8 @@ class Interface:
             ("follow user", "Follow a user", self.follow_user),
             ("unfollow user", "Unfollow a user", self.unfollow_user),
             ("list followers", "List all followers", self.list_followers),
-            ("list following", "List all following", self.list_following)
+            ("list following", "List all following", self.list_following),
+            ("view profile", "View the profile of a given user", self.view_profile)
         )
 
         # Generate command mappings
@@ -49,7 +50,8 @@ class Interface:
 
         return True
 
-    def __matching_prompt(self, prompt: str, options: list[str]) -> str:
+    @staticmethod
+    def __matching_prompt(prompt: str, options: list[str]) -> str:
         """
         Prompt the user and make sure they respond with one of the options
 
@@ -535,6 +537,38 @@ class Interface:
             print(f[0])
 
         return True
+
+    def view_profile(self) -> bool:
+        """
+        View the profile of a user
+
+        :return: If successful
+        """
+        username = str(input("Enter username of user to view: "))
+
+        collection = self.database.list_collections(username)
+
+        if collection == False:
+            print("Failed to query user. Does the user exist?")
+            return False
+
+        collection = len(collection)
+
+        followers = len(self.database.list_followers(username))
+        following = len(self.database.list_following(username))
+
+        top_books = self.database.get_top_books(username)
+
+        print(f"User {username}:")
+        print(f"\t{collection} collections")
+        print(f"\t{followers} followers")
+        print(f"\tIs following {following} users")
+        print(f"Top {len(top_books)} books:")
+
+        self.__display_books(top_books)
+
+        return True
+
     
     def shutdown(self):
         self.database.shutdown()
