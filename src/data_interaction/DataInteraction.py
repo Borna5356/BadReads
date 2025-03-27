@@ -512,11 +512,12 @@ class DataInteraction:
             return False
     
 
-    def list_collections(self) -> list[tuple[str, int, int]]:
+    def list_collections(self, username: str = None) -> list[tuple[str, int, int]]:
         """
         Get a list of all collections
         -- Should be listed by name in ascending order
 
+        :param username: Username of the user to query, if None use current user
         :return: List of all collections as tuple(name, number of books, total page count)
         """
         try:
