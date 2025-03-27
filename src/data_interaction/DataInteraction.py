@@ -244,10 +244,11 @@ class DataInteraction:
         except:
             return False
 
-    def list_followers(self) -> list[str]:
+    def list_followers(self, username: str = None) -> list[str]:
         """
         List all users that follow current user
 
+        :param username: Username of the user to query, if None use current user
         :return: List of usernames that follow current user
         """
 
@@ -263,10 +264,11 @@ class DataInteraction:
         except:
             return False
 
-    def list_following(self) -> list[str]:
+    def list_following(self, username: str = None) -> list[str]:
         """
         List all users that current user follows
 
+        :param username: Username of the user to query, if None use current user
         :return: Usernames of following
         """
 
@@ -541,11 +543,12 @@ class DataInteraction:
         except:
             return False
 
-    def get_collection_contents(self, collection_name: str) -> list[tuple[str, list[str], str, int, str, int]]:
+    def get_collection_contents(self, collection_name: str, username: str = None) -> list[tuple[str, list[str], str, int, str, int]]:
         """
         Get a list of all books in a collection
 
         :param collection_name: Name of the collection to search
+        :param username: Username of the user to query, if None use current user
         :return: List of books as tuple(name, authors, publisher, length, audience, rating, isbn)
         """
         try:            
@@ -815,6 +818,15 @@ class DataInteraction:
             return book_name
         except:
             return False
+
+    def get_top_books(self, username: str = None) -> list[tuple[str, list[str], str, int, str, int]]:
+        """
+        Get top books for the given user
+
+        :param username: Username of the user to query, if None use current user
+        :return: Top books
+        """
+        pass
 
     def shutdown(self):
         try:
