@@ -29,7 +29,10 @@ class Interface:
             ("unfollow user", "Unfollow a user", self.unfollow_user),
             ("list followers", "List all followers", self.list_followers),
             ("list following", "List all following", self.list_following),
-            ("view profile", "View the profile of a given user", self.view_profile)
+            ("view profile", "View the profile of a given user", self.view_profile),
+            ("top books", "View the top books among following or all users", self.top_books),
+            ("new releases", "View the top new releases of the month", self.new_releases),
+            ("recommendations", "Get recommendations for books to read", self.recommendations)
         )
 
         # Generate command mappings
@@ -569,6 +572,83 @@ class Interface:
 
         return True
 
+    def top_books(self) -> bool:
+        """
+        Get top books across all users or following users
+
+        :return: If successful
+        """
+        if not self.__pre_checks():
+            return False
+
+        following = str(input("Top books by users you (f)ollow or (a)ll users: ")) == "f"
+
+        if following:
+            books = self.database.get_top_recent_books(self.database.get_current_user())
+        else:
+            books = self.database.get_top_recent_books()
+
+        if books == False:
+            print("Failed to fetch top books")
+            return False
+
+        if books is None:
+            print("No books found")
+            return False
+
+        suffix = "among users you follow" if following else ""
+        print(f"Top books{suffix}:")
+        self.__display_books(books)
+
+        return True
+
+    def new_releases(self) -> bool:
+        """
+        Get top 5 new releases of the month
+
+        :return: If successful
+        """
+        if not self.__pre_checks():
+            return False
+
+        books = self.database.get_top_new_releases()
+
+        if books == False:
+            print("Failed to fetch top books")
+            return False
+
+        if books is None:
+            print("No books found")
+            return False
+
+        print(f"Top {len(books)} new releases this month:")
+        self.__display_books(books)
+
+        return True
+
+    def recommendations(self) -> bool:
+        """
+        Get recommendations based on read history and such
+
+        :return: If successful
+        """
+        if not self.__pre_checks():
+            return False
+
+        books = self.database.get_recommendations()
+
+        if books == False:
+            print("Failed to fetch top books")
+            return False
+
+        if books is None:
+            print("No books found")
+            return False
+
+        print(f"Top {len(books)} recommended books:")
+        self.__display_books(books)
+
+        return True
     
     def shutdown(self):
         self.database.shutdown()
