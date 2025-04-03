@@ -835,6 +835,7 @@ class DataInteraction:
     def get_top_recent_books(self, source_user: str = None) -> list[tuple[str, list[str], str, int, str, int]]:
         """
         Get top 20 books among source_user's followers, or among all users if source_user none
+        -- over the past 90 days
 
         :param source_user: User to search followers, none if all users
         :return: Books
