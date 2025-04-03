@@ -251,7 +251,7 @@ class DataInteraction:
         :param username: Username of the user to query, if None use current user
         :return: List of usernames that follow current user
         """
-
+        # TODO Add username functionality
         try:
             query = f"""
                         SELECT followerusername FROM follows WHERE followeeusername = '{self.__current_user}';
@@ -271,7 +271,7 @@ class DataInteraction:
         :param username: Username of the user to query, if None use current user
         :return: Usernames of following
         """
-
+        # TODO Add username functionality
         try:
             query = f"""
                         SELECT followeeusername FROM follows WHERE followerusername = '{self.__current_user}';
@@ -520,6 +520,7 @@ class DataInteraction:
         :param username: Username of the user to query, if None use current user
         :return: List of all collections as tuple(name, number of books, total page count)
         """
+        # TODO Add username functionality
         try:
             query = f"""
                         SELECT collections.name, COUNT(belongs_to.isbn) AS num_books,
@@ -552,6 +553,7 @@ class DataInteraction:
         :param username: Username of the user to query, if None use current user
         :return: List of books as tuple(name, authors, publisher, length, audience, rating, isbn)
         """
+        # TODO Add username functionality
         try:            
             query = f"""
                     SELECT 
@@ -822,11 +824,40 @@ class DataInteraction:
 
     def get_top_books(self, username: str = None) -> list[tuple[str, list[str], str, int, str, int]]:
         """
-        Get top books for the given user
+        Get top 10 books for the given user
 
         :param username: Username of the user to query, if None use current user
         :return: Top books
         """
+        # TODO Implement
+        pass
+
+    def get_top_recent_books(self, source_user: str = None) -> list[tuple[str, list[str], str, int, str, int]]:
+        """
+        Get top 20 books among source_user's followers, or among all users if source_user none
+
+        :param source_user: User to search followers, none if all users
+        :return: Books
+        """
+        # TODO Implement
+        pass
+
+    def get_top_new_releases(self) -> list[tuple[str, list[str], str, int, str, int]]:
+        """
+        Get the top 5 new releases among all users
+
+        :return: Top 5 new released books
+        """
+        # TODO Implement
+        pass
+
+    def get_recommendations(self) -> list[tuple[str, list[str], str, int, str, int]]:
+        """
+        Get recommendations for books to read for the current user
+
+        :return: Books recommended by the system
+        """
+        # TODO Implement
         pass
 
     def shutdown(self):
