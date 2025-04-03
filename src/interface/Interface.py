@@ -1,5 +1,6 @@
 from getpass import getpass
 from tabulate import tabulate
+import hashlib
 
 from data_interaction.DataInteraction import DataInteraction
 from data_interaction.DataInteraction import SortOptions, SearchMethods
@@ -70,7 +71,23 @@ class Interface:
 
         return selected
 
-    def __display_books(self, books) -> None:
+    @staticmethod
+    def __hash_password(plaintext: str) -> str:
+        """
+        Hash the given plaintext into its sha1
+
+        :param plaintext: Plaintext to hash
+        :return: Resulting hash
+        """
+        m = hashlib.sha1()
+        password = "BORNA LOVES MINECRAFT" + plaintext
+
+        m.update(password.encode())
+
+        return m.hexdigest()
+
+    @staticmethod
+    def __display_books(books) -> None:
         """
         Print a list of books as a table
 
@@ -106,6 +123,7 @@ class Interface:
         """
         username = str(input("Username: "))
         password = str(getpass("Password: "))
+        password = self.__hash_password(password)
 
         if self.database.login(username, password):
             # This means login success so allow login
@@ -146,6 +164,7 @@ class Interface:
             return False
 
         # Now attempt to create the account
+        password = self.__hash_password(password)
         if self.database.create_account(username, name, email, password):
             self.database.login(username, password)
             print("Account created successfully! Logged in.")
