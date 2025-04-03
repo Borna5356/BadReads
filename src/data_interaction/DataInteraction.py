@@ -246,15 +246,17 @@ class DataInteraction:
 
     def list_followers(self, username: str = None) -> list[str]:
         """
-        List all users that follow current user
+        List all users that follow user with given username
 
         :param username: Username of the user to query, if None use current user
         :return: List of usernames that follow current user
         """
-        # TODO Add username functionality
+        if (username == None):
+            username = self.__current_user
+            
         try:
             query = f"""
-                        SELECT followerusername FROM follows WHERE followeeusername = '{self.__current_user}';
+                        SELECT followerusername FROM follows WHERE followeeusername = '{username}';
                     """
 
             self.__cursor.execute(query)
@@ -266,15 +268,17 @@ class DataInteraction:
 
     def list_following(self, username: str = None) -> list[str]:
         """
-        List all users that current user follows
+        List all users that the given user follows
 
         :param username: Username of the user to query, if None use current user
         :return: Usernames of following
         """
-        # TODO Add username functionality
+        if (username == None):
+            username = self.__current_user
+
         try:
             query = f"""
-                        SELECT followeeusername FROM follows WHERE followerusername = '{self.__current_user}';
+                        SELECT followeeusername FROM follows WHERE followerusername = '{username}';
                     """
 
             self.__cursor.execute(query)
@@ -520,7 +524,9 @@ class DataInteraction:
         :param username: Username of the user to query, if None use current user
         :return: List of all collections as tuple(name, number of books, total page count)
         """
-        # TODO Add username functionality
+        if (username == None):
+            username = self.__current_user
+        
         try:
             query = f"""
                         SELECT collections.name, COUNT(belongs_to.isbn) AS num_books,
@@ -534,7 +540,7 @@ class DataInteraction:
                         LEFT JOIN
                             book ON book.isbn = belongs_to.isbn
                         WHERE
-                            creates.username = '{self.__current_user}'
+                            creates.username = '{username}'
                         GROUP BY collections.name;
                     """
 
@@ -553,7 +559,9 @@ class DataInteraction:
         :param username: Username of the user to query, if None use current user
         :return: List of books as tuple(name, authors, publisher, length, audience, rating, isbn)
         """
-        # TODO Add username functionality
+        if (username == None):
+            username = self.__current_user
+        
         try:            
             query = f"""
                     SELECT 
@@ -586,9 +594,9 @@ class DataInteraction:
                     JOIN 
                         contributor AS publishes_contrib ON publishes.contributorID = publishes_contrib.contributorID
                     LEFT JOIN 
-                        rates ON book.isbn = rates.isbn AND rates.username = '{self.__current_user}'
+                        rates ON book.isbn = rates.isbn AND rates.username = '{username}'
                     WHERE
-                        collections.name = '{collection_name}' AND creates.username = '{self.__current_user}'
+                        collections.name = '{collection_name}' AND creates.username = '{username}'
                     GROUP BY
                         rates.rates, book.title, book.length, book.audience, book.isbn;
                     """
@@ -829,8 +837,27 @@ class DataInteraction:
         :param username: Username of the user to query, if None use current user
         :return: Top books
         """
-        # TODO Implement
-        pass
+        if (username == None):
+            username = self.__current_user
+        
+        try:
+            query = f"""
+                        SELECT
+                            isbn,
+                            endpage - startpage as PagesRead
+                        FROM reads
+                        WHERE
+                            username = '{username}'
+                        ORDER BY PagesRead DESC
+                        LIMIT 5;
+                    """
+
+            self.__cursor.execute(query)
+            rows = self.__cursor.fetchall()
+            
+            return rows
+        except:
+            return False
 
     def get_top_recent_books(self, source_user: str = None) -> list[tuple[str, list[str], str, int, str, int]]:
         """
