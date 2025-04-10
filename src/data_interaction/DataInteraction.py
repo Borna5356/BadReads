@@ -843,13 +843,37 @@ class DataInteraction:
         try:
             query = f"""
                         SELECT
-                            isbn,
-                            endpage - startpage as PagesRead
-                        FROM reads
+                            book.title as title,
+                            STRING_AGG(DISTINCT authors_contrib.name, ', ') AS authors,
+                            STRING_AGG(DISTINCT publishes_contrib.name, ', ') AS publishers,
+                            book.length,
+                            CASE
+                                WHEN book.audience = 0 THEN 'Kids'
+                                WHEN book.audience = 1 THEN 'Teens'
+                                WHEN book.audience = 2 THEN 'Adults'
+                                ELSE 'Unknown'
+                            END AS audience,
+                            rates.rates AS rating
+                        FROM
+                            reads
+                        JOIN
+                            book on book.isbn = reads.isbn
+                        JOIN
+                            authors ON book.isbn = authors.isbn
+                        JOIN
+                            contributor AS authors_contrib ON authors.contributorID = authors_contrib.contributorID
+                        JOIN
+                            publishes ON book.isbn = publishes.isbn
+                        JOIN
+                            contributor AS publishes_contrib ON publishes.contributorID = publishes_contrib.contributorID
+                        LEFT JOIN
+                            rates ON book.isbn = rates.isbn AND rates.username = '{username}'
                         WHERE
-                            username = '{username}'
-                        ORDER BY PagesRead DESC
-                        LIMIT 5;
+                            reads.username = '{username}'
+                        GROUP BY
+                            rates.rates, book.title, book.length, book.audience, reads.endpage - reads.startpage
+                        ORDER BY reads.endpage - reads.startpage DESC
+                        LIMIT 10;
                     """
 
             self.__cursor.execute(query)
