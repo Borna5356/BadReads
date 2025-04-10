@@ -872,7 +872,7 @@ class DataInteraction:
                             reads.username = '{username}'
                         GROUP BY
                             rates.rates, book.title, book.length, book.audience, reads.endpage - reads.startpage
-                        ORDER BY reads.endpage - reads.startpage DESC
+                        ORDER BY SUM(reads.endpage - reads.startpage) DESC
                         LIMIT 10;
                     """
 
