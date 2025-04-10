@@ -17,6 +17,8 @@ def main():
                 except KeyboardInterrupt:
                     print()
                     continue
+            elif command == "":
+                continue
             elif command == "exit":
                 interface.shutdown()
                 break
