@@ -977,9 +977,7 @@ class DataInteraction:
                         LEFT JOIN
                             rates ON reads.isbn = rates.isbn
                         WHERE
-                            extract(month from CURRENT_TIMESTAMP) = extract(month from book.releasedate)
-                            AND
-                            extract(year from CURRENT_TIMESTAMP) = extract(year from book.releasedate)
+                            book.releasedate >= date_trunc('month', CURRENT_DATE)
                         GROUP BY
                             reads.isbn, book.title, book.length, book.audience, reads.endpage - reads.startpage, book.releasedate
                         ORDER BY SUM(reads.endpage - reads.startpage) DESC
