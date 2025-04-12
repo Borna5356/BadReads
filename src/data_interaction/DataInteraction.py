@@ -948,8 +948,50 @@ class DataInteraction:
 
         :return: Top 5 new released books
         """
-        # TODO Implement
-        pass
+        try:
+            query = f"""
+                        SELECT
+                            book.title as title,
+                            STRING_AGG(DISTINCT authors_contrib.name, ', ') AS authors,
+                            STRING_AGG(DISTINCT publishes_contrib.name, ', ') AS publishers,
+                            book.length,
+                            CASE
+                                WHEN book.audience = 0 THEN 'Kids'
+                                WHEN book.audience = 1 THEN 'Teens'
+                                WHEN book.audience = 2 THEN 'Adults'
+                                ELSE 'Unknown'
+                            END AS audience,
+                            AVG(rates.rates) AS rating
+                        FROM
+                            reads
+                        JOIN
+                            book on book.isbn = reads.isbn
+                        JOIN
+                            authors ON book.isbn = authors.isbn
+                        JOIN
+                            contributor AS authors_contrib ON authors.contributorID = authors_contrib.contributorID
+                        JOIN
+                            publishes ON book.isbn = publishes.isbn
+                        JOIN
+                            contributor AS publishes_contrib ON publishes.contributorID = publishes_contrib.contributorID
+                        LEFT JOIN
+                            rates ON reads.isbn = rates.isbn
+                        WHERE
+                            extract(month from CURRENT_TIMESTAMP) = extract(month from book.releasedate)
+                            AND
+                            extract(year from CURRENT_TIMESTAMP) = extract(year from book.releasedate)
+                        GROUP BY
+                            reads.isbn, book.title, book.length, book.audience, reads.endpage - reads.startpage, book.releasedate
+                        ORDER BY SUM(reads.endpage - reads.startpage) DESC
+                        LIMIT 5;
+                    """
+
+            self.__cursor.execute(query)
+            rows = self.__cursor.fetchall()
+            
+            return rows
+        except:
+            return False
 
     def get_recommendations(self) -> list[tuple[str, list[str], str, int, str, int]]:
         """
