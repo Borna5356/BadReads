@@ -883,10 +883,9 @@ class DataInteraction:
         except:
             return False
 
-    def get_top_recent_books(self, source_user: str = None) -> list[tuple[str, list[str], str, int, str, int]]:
+    def get_top_recent_books(self) -> list[tuple[str, list[str], str, int, str, int]]:
         """
-        Get top 20 books among source_user's followees, or among all users if source_user none
-        -- over the past 90 days
+        Get top 20 books among all users over the past 90 days
 
         :param source_user: User to search followees, none if all users
         :return: Books
@@ -908,12 +907,6 @@ class DataInteraction:
                             AVG(rates.rates) AS rating
                         FROM
                             reads
-                        {
-                            "JOIN follows ON reads.username = follows.followeeusername"
-                            if source_user
-                            else ""
-                        }
-
                         JOIN
                             book on book.isbn = reads.isbn
                         JOIN
@@ -927,7 +920,6 @@ class DataInteraction:
                         LEFT JOIN
                             rates ON reads.isbn = rates.isbn
                         WHERE
-                            {"follows.followerusername = '{source_user}' AND" if source_user else ""}
                             extract(day from CURRENT_TIMESTAMP - book.releasedate) <= 90
                         GROUP BY
                             reads.isbn, book.title, book.length, book.audience, reads.endpage - reads.startpage, book.releasedate
@@ -948,7 +940,50 @@ class DataInteraction:
 
         :return: Top 20 books
         """
-        pass
+        try:
+            query = f"""
+                        SELECT
+                            book.title as title,
+                            STRING_AGG(DISTINCT authors_contrib.name, ', ') AS authors,
+                            STRING_AGG(DISTINCT publishes_contrib.name, ', ') AS publishers,
+                            book.length,
+                            CASE
+                                WHEN book.audience = 0 THEN 'Kids'
+                                WHEN book.audience = 1 THEN 'Teens'
+                                WHEN book.audience = 2 THEN 'Adults'
+                                ELSE 'Unknown'
+                            END AS audience,
+                            AVG(rates.rates) AS rating
+                        FROM
+                            reads
+                        JOIN
+                            follows ON reads.username = follows.followeeusername
+                        JOIN
+                            book on book.isbn = reads.isbn
+                        JOIN
+                            authors ON book.isbn = authors.isbn
+                        JOIN
+                            contributor AS authors_contrib ON authors.contributorID = authors_contrib.contributorID
+                        JOIN
+                            publishes ON book.isbn = publishes.isbn
+                        JOIN
+                            contributor AS publishes_contrib ON publishes.contributorID = publishes_contrib.contributorID
+                        LEFT JOIN
+                            rates ON reads.isbn = rates.isbn
+                        WHERE
+                            follows.followerusername = '{self.__current_user}'
+                        GROUP BY
+                            reads.isbn, book.title, book.length, book.audience, reads.endpage - reads.startpage, book.releasedate
+                        ORDER BY SUM(reads.endpage - reads.startpage) DESC
+                        LIMIT 20;
+                    """
+
+            self.__cursor.execute(query)
+            rows = self.__cursor.fetchall()
+            
+            return rows
+        except:
+            return False
 
     def get_top_new_releases(self) -> list[tuple[str, list[str], str, int, str, int]]:
         """
