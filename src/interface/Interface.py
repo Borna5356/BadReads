@@ -31,7 +31,8 @@ class Interface:
             ("list followers", "List all followers", self.list_followers),
             ("list following", "List all following", self.list_following),
             ("view profile", "View the profile of a given user", self.view_profile),
-            ("top books", "View the top books among following or all users", self.top_books),
+            ("top books", "View the top books among all users over last 90 days", self.top_books),
+            ("follower favorites", "View the top books among followers", self.follower_favorites),
             ("new releases", "View the top new releases of the month", self.new_releases),
             ("recommendations", "Get recommendations for books to read", self.recommendations)
         )
@@ -593,19 +594,14 @@ class Interface:
 
     def top_books(self) -> bool:
         """
-        Get top books across all users or following users
+        Get top books across all users
 
         :return: If successful
         """
         if not self.__pre_checks():
             return False
 
-        following = str(input("Top books by users you (f)ollow or (a)ll users: ")) == "f"
-
-        if following:
-            books = self.database.get_top_recent_books(self.database.get_current_user())
-        else:
-            books = self.database.get_top_recent_books()
+        books = self.database.get_top_recent_books()
 
         if books == False:
             print("Failed to fetch top books")
@@ -615,11 +611,38 @@ class Interface:
             print("No books found")
             return False
 
-        suffix = "among users you follow" if following else ""
-        print(f"Top books{suffix}:")
+
+        print(f"Top books:")
         self.__display_books(books)
 
         return True
+
+    def follower_favorites(self) -> bool:
+        """
+        Get the top 20 most popular books among following users
+
+        :return: If successful
+        """
+        if not self.__pre_checks():
+            return False
+
+        books = self.database.get_top_following_books()
+
+        if books == False:
+            print("Failed to fetch top following books")
+            return False
+
+        if books is None:
+            print("No books found")
+            return False
+
+
+        print(f"Top books among users you follow:")
+        self.__display_books(books)
+
+        return True
+
+
 
     def new_releases(self) -> bool:
         """
