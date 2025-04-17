@@ -885,10 +885,10 @@ class DataInteraction:
 
     def get_top_recent_books(self, source_user: str = None) -> list[tuple[str, list[str], str, int, str, int]]:
         """
-        Get top 20 books among source_user's followers, or among all users if source_user none
+        Get top 20 books among source_user's followees, or among all users if source_user none
         -- over the past 90 days
 
-        :param source_user: User to search followers, none if all users
+        :param source_user: User to search followees, none if all users
         :return: Books
         """
         
@@ -941,6 +941,14 @@ class DataInteraction:
             return rows
         except:
             return False
+
+    def get_top_following_books(self) -> list[tuple[str, list[str], str, int, str, int]]:
+        """
+        Get the top 20 books among users that you follow
+
+        :return: Top 20 books
+        """
+        pass
 
     def get_top_new_releases(self) -> list[tuple[str, list[str], str, int, str, int]]:
         """
