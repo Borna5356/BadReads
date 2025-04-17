@@ -1045,7 +1045,7 @@ class DataInteraction:
                         WITH unread_books AS
                         (
                             SELECT
-                                book.isbn AS isbn, book.title, reads.username,
+                                distinct book.isbn AS isbn, book.title,
                                 category.genreid AS genreid, authors.contributorid AS authorid,
                                 AVG(rates.rates) AS rating,
                                 book.length AS length,
@@ -1057,10 +1057,6 @@ class DataInteraction:
                                 END AS audience
                             FROM
                                 book
-                            LEFT JOIN
-                                reads
-                        ON
-                                book.isbn = reads.isbn
                             JOIN
                                 category on category.isbn = book.isbn
                             JOIN
@@ -1068,9 +1064,15 @@ class DataInteraction:
                             LEFT JOIN
                                 rates on book.isbn = rates.isbn
                             WHERE
-                                reads.username != '{self.__current_user}'
+                                NOT EXISTS
+                                    (
+                                        SELECT 1
+                                        FROM reads
+                                        WHERE reads.isbn = book.isbn
+                                        AND reads.username = '{self.__current_user}'
+                                    )
                             GROUP BY
-                                book.isbn, book.title, reads.username, category.genreid, authors.contributorid
+                                book.isbn, book.title, category.genreid, authors.contributorid, book.length, book.audience
                         ),
                         similar_users AS
                         (
@@ -1155,7 +1157,7 @@ class DataInteraction:
                         GROUP BY
                             rb.title, rb.length, rb.audience, rb.rating, rb.metric
                         ORDER BY
-                            rb.metric DESC
+                            rb.metric DESC;
                         LIMIT 20;
                     """
 
