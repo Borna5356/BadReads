@@ -1040,8 +1040,130 @@ class DataInteraction:
 
         :return: Books recommended by the system
         """
-        # TODO Implement
-        pass
+        try:
+            query = f"""
+                        WITH unread_books AS
+                        (
+                            SELECT
+                                book.isbn AS isbn, book.title, reads.username,
+                                category.genreid AS genreid, authors.contributorid AS authorid,
+                                AVG(rates.rates) AS rating,
+                                book.length AS length,
+                                CASE
+                                    WHEN book.audience = 0 THEN 'Kids'
+                                    WHEN book.audience = 1 THEN 'Teens'
+                                    WHEN book.audience = 2 THEN 'Adults'
+                                    ELSE 'Unknown'
+                                END AS audience
+                            FROM
+                                book
+                            LEFT JOIN
+                                reads
+                        ON
+                                book.isbn = reads.isbn
+                            JOIN
+                                category on category.isbn = book.isbn
+                            JOIN
+                                authors on authors.isbn = book.isbn
+                            LEFT JOIN
+                                rates on book.isbn = rates.isbn
+                            WHERE
+                                reads.username != '{self.__current_user}'
+                            GROUP BY
+                                book.isbn, book.title, reads.username, category.genreid, authors.contributorid
+                        ),
+                        similar_users AS
+                        (
+                            SELECT
+                                follows.followeeusername AS username
+                            FROM
+                                follows
+                            WHERE
+                                follows.followerusername = '{self.__current_user}'
+                            UNION
+                            SELECT
+                                follows.followerusername AS username
+                            FROM
+                                follows
+                            WHERE
+                                follows.followeeusername = '{self.__current_user}'
+                            UNION
+                                SELECT '{self.__current_user}'
+                        ),
+                        genre_counts AS
+                        (
+                            SELECT
+                                category.genreid, count(category.genreid) AS g_count
+                            FROM
+                                reads
+                            JOIN
+                                book ON reads.isbn = book.isbn
+                            JOIN category ON category.isbn = book.isbn
+                            JOIN similar_users ON similar_users.username = reads.username
+                            GROUP BY category.genreid
+                        ),
+                        author_counts AS
+                        (
+                            SELECT
+                                contributorid, count(contributorid) AS a_count
+                            FROM
+                                reads
+                            JOIN
+                                book ON reads.isbn = book.isbn
+                            JOIN
+                                authors ON authors.isbn = book.isbn
+                            JOIN
+                                similar_users ON similar_users.username = reads.username
+                            GROUP BY
+                                authors.contributorid
+                        ),
+                        recommended_books AS
+                        (
+                            SELECT
+                                DISTINCT unread_books.isbn as isbn,
+                                unread_books.title as title,
+                                unread_books.length as length,
+                                unread_books.audience as audience,
+                                (genre_counts.g_count + author_counts.a_count) * COALESCE(unread_books.rating, 1)
+                                AS metric,
+                                unread_books.rating
+                            FROM
+                                unread_books
+                            JOIN
+                                genre_counts ON unread_books.genreid = genre_counts.genreid
+                            JOIN author_counts ON unread_books.authorid = author_counts.contributorid
+                            GROUP BY unread_books.isbn, metric, unread_books.rating, unread_books.title, unread_books.length, unread_books.audience
+                            ORDER BY metric DESC
+                        )
+                        SELECT
+                            rb.title AS title,
+                            STRING_AGG(DISTINCT authors_contrib.name, ', ') AS authors,
+                            STRING_AGG(DISTINCT publishes_contrib.name, ', ') AS publishers,
+                            rb.length,
+                            rb.audience,
+                            rb.rating
+                        FROM
+                            recommended_books rb
+                        JOIN
+                            authors ON rb.isbn = authors.isbn
+                        JOIN
+                            contributor AS authors_contrib ON authors.contributorID = authors_contrib.contributorID
+                        JOIN
+                            publishes ON rb.isbn = publishes.isbn
+                        JOIN
+                            contributor AS publishes_contrib ON publishes.contributorID = publishes_contrib.contributorID
+                        GROUP BY
+                            rb.title, rb.length, rb.audience, rb.rating, rb.metric
+                        ORDER BY
+                            rb.metric DESC;
+                    """
+
+            self.__cursor.execute(query)
+            rows = self.__cursor.fetchall()
+            
+            return rows
+        except:
+            return False
 
     def shutdown(self):
         try:
