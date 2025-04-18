@@ -86,7 +86,7 @@ class DataInteraction:
             if (self.__cursor.rowcount == 0):
                 return False
 
-            # If successfully logged the log in then current user should be set
+            # If successfully logged in then current user should be set
             self.__current_user = username
             return True
         except:
@@ -234,9 +234,9 @@ class DataInteraction:
         """
         try:
             query = f"""
-                DELETE from follows WHERE followerusername = '{self.__current_user}'
-                AND followeeusername = '{followee}';
-            """
+                        DELETE from follows WHERE followerusername = '{self.__current_user}'
+                        AND followeeusername = '{followee}';
+                    """
 
             self.__cursor.execute(query)
 
@@ -350,7 +350,8 @@ class DataInteraction:
         :return: If all were added
         """
         try:
-            query = f"""SELECT creates.collectionid
+            query = f"""
+                        SELECT creates.collectionid
                         FROM
                             creates
                         JOIN
@@ -371,9 +372,9 @@ class DataInteraction:
 
             for isbn in book_isbns:
                 query = f"""
-                    INSERT INTO belongs_to (collectionid, isbn)
-                    VALUES ({collectionid}, '{isbn}');
-                """
+                            INSERT INTO belongs_to (collectionid, isbn)
+                            VALUES ({collectionid}, '{isbn}');
+                        """
         
                 self.__cursor.execute(query)
 
@@ -395,7 +396,8 @@ class DataInteraction:
         """
 
         try:
-            query = f"""SELECT creates.collectionid
+            query = f"""
+                        SELECT creates.collectionid
                         FROM
                             creates
                         JOIN
@@ -416,10 +418,10 @@ class DataInteraction:
 
             for isbn in book_isbns:
                 query = f"""
-                    DELETE FROM belongs_to
-                    WHERE collectionid = {collectionid}
-                    AND isbn = '{isbn}';
-                """
+                            DELETE FROM belongs_to
+                            WHERE collectionid = {collectionid}
+                            AND isbn = '{isbn}';
+                        """
         
                 self.__cursor.execute(query)
 
@@ -440,7 +442,8 @@ class DataInteraction:
         """
 
         try:
-            query = f"""SELECT creates.collectionid
+            query = f"""
+                        SELECT creates.collectionid
                         FROM
                             creates
                         JOIN
@@ -492,22 +495,27 @@ class DataInteraction:
         :return: If successful
         """
         try:
-            query = f"""SELECT creates.username
+            query = f"""
+                        SELECT creates.collectionid
                         FROM
                             creates
                         JOIN
                             collections ON creates.collectionid = collections.collectionid
                         WHERE
-                            creates.username = '{self.__current_user}';
+                            creates.username = '{self.__current_user}'
+                            AND collections.name = '{current_name}';
                     """
             self.__cursor.execute(query)
             
             if self.__cursor.rowcount == 0:
                 return False
             
+            row = self.__cursor.fetchone()            
+            collectionid = row[0]
+            
             query = f"""
                         UPDATE collections SET name = '{new_name}'
-                        WHERE name = '{current_name}';
+                        WHERE collectionid = {collectionid};
                     """
             self.__cursor.execute(query)
             
@@ -1076,21 +1084,26 @@ class DataInteraction:
                         ),
                         similar_users AS
                         (
-                            SELECT
-                                follows.followeeusername AS username
-                            FROM
-                                follows
-                            WHERE
-                                follows.followerusername = '{self.__current_user}'
-                            UNION
-                            SELECT
-                                follows.followerusername AS username
-                            FROM
-                                follows
-                            WHERE
-                                follows.followeeusername = '{self.__current_user}'
-                            UNION
-                                SELECT '{self.__current_user}'
+                            SELECT DISTINCT username
+                            FROM 
+                            (
+                                SELECT
+                                    followeeusername AS username
+                                FROM
+                                    follows
+                                WHERE
+                                    followerusername = '{self.__current_user}'
+                                UNION
+                                SELECT
+                                    followerusername AS username 
+                                FROM
+                                    follows 
+                                WHERE
+                                    followeeusername = '{self.__current_user}'
+                                UNION
+                                SELECT '{self.__current_user}' AS username
+                            )
+                            AS users_unfiltered
                         ),
                         genre_counts AS
                         (
@@ -1135,7 +1148,6 @@ class DataInteraction:
                                 genre_counts ON unread_books.genreid = genre_counts.genreid
                             JOIN author_counts ON unread_books.authorid = author_counts.contributorid
                             GROUP BY unread_books.isbn, metric, unread_books.rating, unread_books.title, unread_books.length, unread_books.audience
-                            ORDER BY metric DESC
                         )
                         SELECT
                             rb.title AS title,
