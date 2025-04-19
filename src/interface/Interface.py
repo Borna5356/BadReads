@@ -680,7 +680,7 @@ class Interface:
         books = self.database.get_recommendations()
 
         if books == False:
-            print("Failed to fetch top books")
+            print("Failed to fetch recommendations")
             return False
 
         if books is None:

@@ -1169,7 +1169,7 @@ class DataInteraction:
                         GROUP BY
                             rb.title, rb.length, rb.audience, rb.rating, rb.metric
                         ORDER BY
-                            rb.metric DESC;
+                            rb.metric DESC
                         LIMIT 20;
                     """
 
